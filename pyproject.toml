@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["script_core*"]
+
+[tool.setuptools.package-data]
+script_core = ["py.typed", "use.md"]
+
+[project]
+name = "ok-lumin-new"
+version = "0.1.0"
+description = "Windows game automation with foreground input, WGC capture, and image matching"
+requires-python = ">=3.10"
+dependencies = [
+    "mouse>=0.7.1",
+    "opencv-python>=5.0.0.93",
+    "pillow>=10.0.0",
+    "psutil>=5.9.0",
+    "pynput>=1.8.2",
+    "pyperclip>=1.8.2",
+    "pyside6-essentials>=6.7.0",
+    "pyside6-fluent-widgets>=1.11.3",
+    "pywin32>=306; platform_system == 'Windows'",
+    "windows-capture>=2.0.1",
+]
