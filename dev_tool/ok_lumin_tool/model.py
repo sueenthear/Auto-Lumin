@@ -96,5 +96,6 @@ def action_label(action: dict[str, Any]) -> str:
     if kind == "mouse_down":
         return f"按下鼠标{action.get('button', 'left')}键"
     if kind == "mouse_up":
-        return f"抬起鼠标{action.get('button', 'left')}键"
+        suffix = "（自动补齐）" if action.get("repaired") else ""
+        return f"抬起鼠标{action.get('button', 'left')}键{suffix}"
     return kind

@@ -1,6 +1,8 @@
+import threading
 import time
 import unittest
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 from script_core.facade import _Execution, _Steps
 
@@ -44,6 +46,31 @@ class StepsAbortTests(unittest.TestCase):
         _Steps.abort(execution)
 
         self.assertIsNone(execution._thread)
+        self.assert_disposed(execution)
+
+    def test_abort_releases_mouse_button_held_by_stepscript(self):
+        input_manager = Mock()
+        down_started = threading.Event()
+
+        def mouse_down(button):
+            down_started.set()
+
+        input_manager.mouse_down.side_effect = mouse_down
+        execution = _Execution(
+            SimpleNamespace(input=input_manager),
+            {"actions": [
+                {"timestamp_ns": 0, "type": "mouse_down", "button": "left"},
+                {"timestamp_ns": 10_000_000_000, "type": "mouse_up", "button": "left"},
+            ]},
+            "pause",
+        )
+        _Steps.start(execution)
+        self.assertTrue(down_started.wait(timeout=1))
+
+        _Steps.abort(execution)
+
+        input_manager.mouse_down.assert_called_once_with("left")
+        input_manager.mouse_up.assert_called_once_with("left")
         self.assert_disposed(execution)
 
     def test_end_abort_disposes_when_execution_finishes(self):

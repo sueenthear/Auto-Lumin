@@ -159,6 +159,8 @@ print(execute.time)                            # 累计运行秒数
 
 `load(filepath, end="pause")` 读取并验证单个 `ok-lumin.stepscript` v2 文件，直接返回尚未启动的可执行对象；`loads(dirpath, end="pause")` 读取目录内所有 `.stepscript` 文件并返回 `{文件名（不含后缀）: 可执行对象}`。不再调用 `do.steps.execute(...)`。
 
+动作支持 `key_down` / `key_up`、`mouse_down` / `mouse_up` 和兼容旧脚本的瞬时 `click`。鼠标长按由 `mouse_down` 与 `mouse_up` 的时间戳差决定；正常结束、输入异常或调用 `abort` 时，未释放的键盘和鼠标输入都会尝试释放。鼠标按钮支持 `left`、`right`、`middle`、`x1`、`x2`。
+
 `do.steps.info(execute)` 返回该执行序列的文件头信息，不含动作数组：
 
 ```python

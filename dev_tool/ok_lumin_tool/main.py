@@ -184,7 +184,7 @@ class UnifiedTool:
     def _build_action_tab(self) -> None:
         tab = self.action_tab
         ttk.Label(tab, text="动作录制与播放", style="Title.TLabel").pack(anchor="w")
-        ttk.Label(tab, text="记录键盘按下/抬起和鼠标点击，不记录鼠标移动或坐标。",
+        ttk.Label(tab, text="记录键盘与鼠标按下/抬起事件；不记录鼠标移动或坐标。",
                   style="Muted.TLabel").pack(anchor="w", pady=(2, 10))
 
         controls = ttk.Frame(tab)

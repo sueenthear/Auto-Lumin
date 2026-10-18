@@ -121,7 +121,7 @@ class GlobalShortcut:
 
 
 class InputRecorder:
-    """Capture global keyboard transitions and mouse button clicks."""
+    """Capture global keyboard and mouse button transitions."""
 
     def __init__(self):
         self.keyboard_listener = None
@@ -130,6 +130,7 @@ class InputRecorder:
         self.paused = False
         self._lock = threading.Lock()
         self._held_keys: set[str] = set()
+        self._held_buttons: set[str] = set()
         self.actions: list[dict] = []
         self.pending_actions: queue.SimpleQueue[dict] = queue.SimpleQueue()
         self._start_ns: int | None = None
@@ -185,6 +186,7 @@ class InputRecorder:
                 except queue.Empty:
                     break
             self._held_keys.clear()
+            self._held_buttons.clear()
             self._start_ns = None
             self.paused = False
             self.recording = True
@@ -226,13 +228,25 @@ class InputRecorder:
 
     def _on_click(self, _x, _y, button, pressed) -> None:
         try:
-            if not pressed:
-                return
             name = getattr(button, "name", str(button).split(".")[-1])
-            if name in ("left", "right", "middle", "x1", "x2"):
-                self._append({"type": "click", "button": name})
+            if name not in ("left", "right", "middle", "x1", "x2"):
+                return
+            with self._lock:
+                if not self.recording:
+                    return
+                if pressed:
+                    if self.paused or name in self._held_buttons:
+                        return
+                    self._held_buttons.add(name)
+                    action = self._append_locked({"type": "mouse_down", "button": name})
+                else:
+                    if name not in self._held_buttons:
+                        return
+                    self._held_buttons.remove(name)
+                    action = self._append_locked({"type": "mouse_up", "button": name})
+            self.pending_actions.put(action)
         except Exception:
-            logger.exception("mouse click callback failed")
+            logger.exception("mouse button callback failed")
 
     def pause(self) -> None:
         with self._lock:
@@ -251,7 +265,10 @@ class InputRecorder:
             repairs = []
             for key in sorted(self._held_keys):
                 repairs.append(self._append_locked({"type": "key_up", "key": key, "repaired": True}))
+            for button in sorted(self._held_buttons):
+                repairs.append(self._append_locked({"type": "mouse_up", "button": button, "repaired": True}))
             self._held_keys.clear()
+            self._held_buttons.clear()
             result = list(self.actions)
         for action in repairs:
             self.pending_actions.put(action)
@@ -268,7 +285,7 @@ class InputRecorder:
                 name="RecorderCleanup",
                 daemon=True,
             ).start()
-        logger.info("recording stopped actions=%d repaired_keys=%d", len(result), len(repairs))
+        logger.info("recording stopped actions=%d repaired_inputs=%d", len(result), len(repairs))
         return result
 
     @staticmethod
@@ -304,6 +321,7 @@ class PlaybackWorker(threading.Thread):
         self.resume_event = threading.Event()
         self.resume_event.set()
         self.held_keys: set[str] = set()
+        self.held_buttons: set[str] = set()
         self.keyboard = None
         self.error: Exception | None = None
         self._key_objects: dict[str, object] = {}
@@ -345,14 +363,22 @@ class PlaybackWorker(threading.Thread):
         return self._key_objects[name]
 
     def _release_all(self) -> None:
-        if self._keyboard_controller is None:
-            return
-        for name in tuple(self.held_keys):
-            try:
-                self._keyboard_controller.release(self._key_object(name))
-            except Exception:
-                pass
-            self.held_keys.discard(name)
+        if self._keyboard_controller is not None:
+            for name in tuple(self.held_keys):
+                try:
+                    self._keyboard_controller.release(self._key_object(name))
+                except Exception:
+                    pass
+                self.held_keys.discard(name)
+        if self._mouse_controller is not None and self.keyboard is not None:
+            from pynput import mouse
+
+            for name in tuple(self.held_buttons):
+                try:
+                    self._mouse_controller.release(getattr(mouse.Button, name))
+                except Exception:
+                    pass
+                self.held_buttons.discard(name)
 
     def run(self) -> None:
         try:
@@ -382,6 +408,18 @@ class PlaybackWorker(threading.Thread):
                     button = getattr(mouse.Button, action.get("button", "left"))
                     self._mouse_controller.press(button)
                     self._mouse_controller.release(button)
+                elif kind == "mouse_down":
+                    name = action.get("button", "left")
+                    button = getattr(mouse.Button, name)
+                    if name not in self.held_buttons:
+                        self._mouse_controller.press(button)
+                        self.held_buttons.add(name)
+                elif kind == "mouse_up":
+                    name = action.get("button", "left")
+                    button = getattr(mouse.Button, name)
+                    if name in self.held_buttons:
+                        self._mouse_controller.release(button)
+                        self.held_buttons.discard(name)
                 self.on_action(action)
         except Exception as error:
             self.error = error

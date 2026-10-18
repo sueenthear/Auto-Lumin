@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from script_core.facade import _Execution, _Steps, _Window
+from script_core.steps import load_steps, replay
 
 
 class StepsExecutionTests(unittest.TestCase):
@@ -79,6 +80,94 @@ class StepsExecutionTests(unittest.TestCase):
         self.assertTrue(all(call.args[0] >= 0 for call in sleep.call_args_list))
         self.input.click.assert_called_once_with("left")
         self.assertEqual(execution.state, "paused")
+
+    def test_load_accepts_mouse_down_and_mouse_up_actions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "mouse-hold.stepscript"
+            self.recording["actions"] = [
+                {"type": "mouse_down", "button": "left", "timestamp_ns": 0},
+                {"type": "mouse_up", "button": "left", "timestamp_ns": 250_000_000},
+            ]
+            self.write_recording(path)
+
+            loaded = load_steps(path)
+            execution = self.steps.load(path)
+
+            self.assertEqual(loaded["actions"][0]["type"], "mouse_down")
+            self.assertEqual(loaded["actions"][1]["type"], "mouse_up")
+            self.assertEqual(execution.state, "ready")
+            self.steps.abort(execution)
+
+    def test_start_dispatches_mouse_hold_transitions_in_timestamp_order(self):
+        recording = {
+            **self.recording,
+            "actions": [
+                {"type": "mouse_down", "button": "left", "timestamp_ns": 0},
+                {"type": "mouse_up", "button": "left", "timestamp_ns": 250_000_000},
+            ],
+        }
+        execution = _Execution(self.steps._core, recording, "pause")
+        self.steps.start(execution)
+        execution._thread.join(timeout=2)
+
+        self.assertFalse(execution._thread.is_alive())
+        self.assertEqual(self.input.method_calls, [
+            unittest.mock.call.mouse_down("left"),
+            unittest.mock.call.mouse_up("left"),
+        ])
+        self.assertEqual(execution.state, "paused")
+
+    def test_standalone_replay_dispatches_mouse_hold_transitions(self):
+        recording = {
+            **self.recording,
+            "actions": [
+                {"type": "mouse_down", "button": "right", "timestamp_ns": 0},
+                {"type": "mouse_up", "button": "right", "timestamp_ns": 250_000_000},
+            ],
+        }
+        core = SimpleNamespace(input=self.input, window=SimpleNamespace(activate=Mock(return_value=True)))
+
+        with patch("script_core.steps.time.sleep"):
+            replay(recording, core, activate=False)
+
+        self.assertEqual(self.input.method_calls, [
+            unittest.mock.call.mouse_down("right"),
+            unittest.mock.call.mouse_up("right"),
+        ])
+
+    def test_standalone_replay_releases_mouse_button_on_error(self):
+        self.input.click.side_effect = RuntimeError("input failed")
+        recording = {
+            **self.recording,
+            "actions": [
+                {"type": "mouse_down", "button": "right", "timestamp_ns": 0},
+                {"type": "click", "button": "left", "timestamp_ns": 1},
+            ],
+        }
+        core = SimpleNamespace(input=self.input, window=SimpleNamespace(activate=Mock(return_value=True)))
+
+        with patch("script_core.steps.time.sleep"), self.assertRaisesRegex(RuntimeError, "input failed"):
+            replay(recording, core, activate=False)
+
+        self.input.mouse_down.assert_called_once_with("right")
+        self.input.mouse_up.assert_called_once_with("right")
+
+    def test_mouse_button_is_released_when_later_action_fails(self):
+        self.input.click.side_effect = RuntimeError("input failed")
+        recording = {
+            **self.recording,
+            "actions": [
+                {"type": "mouse_down", "button": "right", "timestamp_ns": 0},
+                {"type": "click", "button": "left", "timestamp_ns": 1},
+            ],
+        }
+        execution = _Execution(self.steps._core, recording, "pause")
+        execution._resume.set()
+        _Steps._run(execution)
+
+        self.assertEqual(execution.state, "failed")
+        self.input.mouse_down.assert_called_once_with("right")
+        self.input.mouse_up.assert_called_once_with("right")
 
     def test_start_records_input_error_in_execution(self):
         self.input.key_down.side_effect = RuntimeError("input failed")

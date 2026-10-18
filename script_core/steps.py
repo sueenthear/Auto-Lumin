@@ -39,7 +39,7 @@ def load_steps(path: str | Path) -> dict[str, Any]:
         if kind in ("key_down", "key_up"):
             if not isinstance(action.get("key"), str) or not action["key"]:
                 raise ValueError(f"Action {index} requires a non-empty key")
-        elif kind == "click":
+        elif kind in ("click", "mouse_down", "mouse_up"):
             if action.get("button") not in ("left", "right", "middle", "x1", "x2"):
                 raise ValueError(f"Action {index} has an unsupported mouse button")
         else:
@@ -67,7 +67,8 @@ def replay(
 
     actions = data["actions"]
     start = time.perf_counter_ns()
-    pressed: set[str] = set()
+    pressed_keys: set[str] = set()
+    pressed_buttons: set[str] = set()
     try:
         for action in actions:
             deadline = start + action["timestamp_ns"] / speed
@@ -78,17 +79,30 @@ def replay(
             if kind == "key_down":
                 key = action["key"]
                 core.input.key_down(key)
-                pressed.add(key)
+                pressed_keys.add(key)
             elif kind == "key_up":
                 key = action["key"]
                 core.input.key_up(key)
-                pressed.discard(key)
+                pressed_keys.discard(key)
+            elif kind == "mouse_down":
+                button = action["button"]
+                core.input.mouse_down(button)
+                pressed_buttons.add(button)
+            elif kind == "mouse_up":
+                button = action["button"]
+                core.input.mouse_up(button)
+                pressed_buttons.discard(button)
             else:
                 core.input.click(action["button"])
     finally:
-        for key in pressed:
+        for key in pressed_keys:
             try:
                 core.input.key_up(key)
+            except Exception:
+                pass
+        for button in pressed_buttons:
+            try:
+                core.input.mouse_up(button)
             except Exception:
                 pass
 

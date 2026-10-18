@@ -386,7 +386,8 @@ class _Steps:
     @staticmethod
     def _run(obj):
         start = time.perf_counter_ns() - int(obj.elapsed * 1e9)
-        pressed = set()
+        pressed_keys = set()
+        pressed_buttons = set()
         try:
             actions = obj.steps["actions"]
             obj.state = "running"
@@ -424,11 +425,19 @@ class _Steps:
                 if kind == "key_down":
                     key = action["key"]
                     obj.core.input.key_down(key)
-                    pressed.add(key)
+                    pressed_keys.add(key)
                 elif kind == "key_up":
                     key = action["key"]
                     obj.core.input.key_up(key)
-                    pressed.discard(key)
+                    pressed_keys.discard(key)
+                elif kind == "mouse_down":
+                    button = action["button"]
+                    obj.core.input.mouse_down(button)
+                    pressed_buttons.add(button)
+                elif kind == "mouse_up":
+                    button = action["button"]
+                    obj.core.input.mouse_up(button)
+                    pressed_buttons.discard(button)
                 else:
                     obj.core.input.click(action["button"])
                 obj._index = index + 1
@@ -440,9 +449,14 @@ class _Steps:
             obj.state = "failed"
         finally:
             obj._started_at = None
-            for key in pressed:
+            for key in pressed_keys:
                 try:
                     obj.core.input.key_up(key)
+                except Exception:
+                    pass
+            for button in pressed_buttons:
+                try:
+                    obj.core.input.mouse_up(button)
                 except Exception:
                     pass
             obj.elapsed = max(obj.elapsed, (time.perf_counter_ns()-start)/1e9)
