@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import math
+import os
+import sys
 import threading
 import time
 from pathlib import Path
 from .core import ScriptCore
 from .image_manager.matcher import TemplateMatcher
+from .interrupt import Interrupt
 from .pixel import Pixel
 from .steps import load_steps
 
@@ -500,6 +503,13 @@ class AutomationCore:
         self.match, self.steps = _Match(core), _Steps(core)
         self.mouse = _Mouse(core)
         self.keyboard = _Keyboard(core)
+        self.interrupt = Interrupt()
+
+    @property
+    def thisfile(self) -> None:
+        """Change the working directory to the file accessing this property."""
+        caller_path = sys._getframe(1).f_code.co_filename
+        os.chdir(Path(caller_path).resolve().parent)
 
     @staticmethod
     def wait(seconds: float) -> None:

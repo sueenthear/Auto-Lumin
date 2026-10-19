@@ -68,6 +68,28 @@ class MouseFacadeTests(unittest.TestCase):
         input_manager.move_by.assert_called_once_with(1, 2, duration=0.2, fps=60)
 
 
+class ThisFileTests(unittest.TestCase):
+    def test_property_changes_directory_to_the_calling_file_directory(self):
+        from pathlib import Path
+
+        core = AutomationCore.__new__(AutomationCore)
+        caller_file = Path(__file__).resolve().parent / "scripts" / "run.py"
+        caller_frame = SimpleNamespace(
+            f_code=SimpleNamespace(co_filename=str(caller_file))
+        )
+
+        with (
+            patch("script_core.facade.sys._getframe", return_value=caller_frame) as getframe,
+            patch("script_core.facade.os.chdir") as chdir,
+        ):
+            result = core.thisfile
+
+        self.assertIsNone(result)
+        getframe.assert_called_once_with(1)
+        chdir.assert_called_once_with(caller_file.parent)
+        self.assertIsInstance(AutomationCore.thisfile, property)
+
+
 class WaitTests(unittest.TestCase):
     def setUp(self):
         self.core = AutomationCore.__new__(AutomationCore)

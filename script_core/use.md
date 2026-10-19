@@ -31,6 +31,24 @@ do.wait(0)    # 允许零秒等待
 
 `do.wait(seconds)` 接收非负、有限的整数或浮点数，单位是秒，阻塞当前调用线程并返回 `None`。负数、`nan`、无穷大、布尔值及非数值会抛 `ValueError`。这是脚本中统一使用的定时等待接口，与 `do.steps.pause(execute)`（暂停回放）不同。
 
+## 工作目录
+
+```python
+do.thisfile  # 将当前工作目录切换到读取该属性的 Python 文件所在目录
+```
+
+`do.thisfile` 是属性，不带括号；读取时立即切换进程工作目录，并返回 `None`。
+
+## 全局中断
+
+创建 `do = Core(...)` 后，全局键盘监听默认启用；按下 `F12` 会立即终止整个 Python 进程，不限于 `steps` 回放期间。可更换触发键：
+
+```python
+do.interrupt.set("F10")
+```
+
+`set(key)` 接受键盘 API 支持的单个按键名称或 Windows virtual-key code。替换后不再监听原键。中断直接结束进程，不会执行 `finally` 清理逻辑。
+
 ## 鼠标与键盘
 
 ### 鼠标 API
