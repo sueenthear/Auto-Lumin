@@ -31,6 +31,24 @@ do.wait(0)    # 允许零秒等待
 
 `do.wait(seconds)` 接收非负、有限的整数或浮点数，单位是秒，阻塞当前调用线程并返回 `None`。负数、`nan`、无穷大、布尔值及非数值会抛 `ValueError`。这是脚本中统一使用的定时等待接口，与 `do.steps.pause(execute)`（暂停回放）不同。
 
+`do.steps.wait(execute)` 会阻塞当前线程，直到执行器的后台线程结束。执行器完成、失败或被终止后会返回；如果执行器被手动暂停，后台线程仍在等待，`wait` 会继续阻塞，直到重新启动并结束或被终止。返回后仍可检查 `execute.error`；等待不会自动抛出该异常：
+
+```python
+do.steps.start(execute_rote)
+do.steps.wait(execute_rote)
+if execute_rote.error is not None:
+    raise execute_rote.error
+```
+
+## 日志
+
+```python
+do.log.output(True)  # 开启
+do.log.output(False) # 关闭
+```
+
+日志默认关闭。开启后，do API 操作会输出到标准输出，格式为 `[本地时间][来源：do.xxx]<消息>`；来源会标明具体操作，例如 `do.mouse.click.left`。键盘输入日志只记录字符数和间隔，不记录输入正文。`output` 仅接受布尔值。
+
 ## 工作目录
 
 ```python

@@ -11,10 +11,16 @@ _COLOR = re.compile(r"^[0-9a-fA-F]{6}$")
 class Pixel:
     """RGB pixel queries over the target window's client-area screenshot."""
 
-    def __init__(self, screenshot):
+    def __init__(self, screenshot, logger=None):
         self._screenshot = screenshot
+        self._logger = logger
+
+    def _log(self, operation: str, message: str) -> None:
+        if self._logger is not None:
+            self._logger.write(f"do.pixel.{operation}", message)
 
     def point(self, x: int, y: int) -> str:
+        self._log("point", f"point ({x}, {y})")
         image = self._screenshot()
         if not isinstance(image, np.ndarray) or image.ndim != 3 or image.shape[2] < 3:
             raise ValueError("Screenshot must be a BGR or BGRA image")
@@ -25,6 +31,7 @@ class Pixel:
         return f"{red:02X}{green:02X}{blue:02X}"
 
     def count(self, target: str, tolerance: float = 0) -> int:
+        self._log("count", f"count color={target!r}, tolerance={tolerance}")
         if not isinstance(target, str) or not _COLOR.fullmatch(target):
             raise ValueError("target must be a six-digit RGB hex string without '#'")
         if not isinstance(tolerance, (int, float)) or not 0 <= tolerance <= 1:

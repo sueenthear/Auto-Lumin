@@ -1,6 +1,17 @@
-from script_core import Core
+from script_core import Core        # 导入包
+
+do = Core("Lumin.exe")              # 绑定窗口
+
+do.thisfile                         # VS code 必写，工作路径更改
+
+do.window.activate()                # 激活窗口
+
+def main():
+    do.mouse.click.left
+    do.mouse.click.right
 
 
-do = Core("Lumin.exe")
-do.window.activate()
-print("已绑定窗口:", do.window.title)
+    do.mouse.move.abs(100, 100)
+
+
+    do.keyboard.click("m")

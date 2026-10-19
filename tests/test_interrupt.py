@@ -17,7 +17,7 @@ class InterruptTests(unittest.TestCase):
             automation = AutomationCore(core)
 
         self.assertIs(automation.interrupt, interrupt)
-        create_interrupt.assert_called_once_with()
+        create_interrupt.assert_called_once_with(automation._logger)
 
     def test_starts_global_listener_with_f12_default(self):
         listener = Mock()

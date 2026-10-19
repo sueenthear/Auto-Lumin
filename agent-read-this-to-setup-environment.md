@@ -5,68 +5,63 @@
 ## 环境要求
 
 - Windows 10/11 桌面环境。窗口绑定、输入模拟和截图功能依赖 Windows API；`pywin32` 也仅在 Windows 上安装。
-- Python 3.10 或更新版本，并确保 Python Launcher (`py`) 可用。
+- Python 3.10 或更新版本，以及 `uv`。
 - Git 仅在克隆或推送项目时需要。
 - 项目依赖由 `pyproject.toml` 管理；不要将本机 `.venv` 或已安装的依赖目录提交到版本库。
 
 确认 Python 版本：
 
 ```powershell
-py -3 --version
+uv --version
 ```
 
-## 创建并安装核心库环境
+## 创建并安装项目环境
 
-在项目根目录创建虚拟环境并激活：
+在项目根目录创建 `.venv` 并按锁文件同步全部项目依赖：
 
 ```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\Activate.ps1
+uv sync --locked
 ```
 
-如果 PowerShell 阻止当前会话运行激活脚本，可以不激活环境，直接使用 `.venv\Scripts\python.exe` 执行下面的命令。
-
-安装项目及其依赖：
+运行项目命令时使用 `uv run`，确保始终使用该 `.venv`：
 
 ```powershell
-python -m pip install --upgrade pip
-python -m pip install -e .
+uv run python -m dev_tool.ok_lumin_tool
+uv run python -m unittest discover -s tests -v
 ```
 
-`-e .` 会将当前源码以 editable 模式安装，修改 `script_core` 后无需重新安装。之后可以从项目脚本中导入：
+也可以直接调用 `.venv\Scripts\python.exe`。无需手动激活环境；不要用全局 `py -m ...` 启动依赖项目环境的程序。
+
+`uv sync` 会将当前项目安装到 `.venv`，因此修改源码后无需重复安装。之后可以从项目脚本中导入：
 
 ```python
 from script_core import Core
 ```
 
-## 安装开发工具依赖
+## 开发工具依赖与启动
 
-`dev_tool/ok_lumin_tool` 有自己的依赖清单，与核心库依赖分开管理。在已激活的项目虚拟环境中执行：
-
-```powershell
-python -m pip install -r dev_tool\ok_lumin_tool\requirements.txt
-```
+`dev_tool/ok_lumin_tool` 所需第三方包统一由根目录 `pyproject.toml` 管理，并锁定在 `uv.lock`；在项目根目录执行 `uv sync --locked` 会安装核心库和开发工具所需依赖，包括 Windows 的 `pywin32`。
 
 开发工具通过 Tkinter 提供 GUI。使用项目虚拟环境启动：
 
 ```powershell
-python -m dev_tool.ok_lumin_tool
+uv run python -m dev_tool.ok_lumin_tool
 ```
 
-也可以从项目根目录双击 `dev_tool\启动.bat`。工具需要桌面会话；无图形桌面的 CI 或远程会话中不要把 GUI 启动作为自动化测试步骤。
+也可以从任意工作目录双击 `dev_tool\启动.bat`。脚本按自身位置定位项目根目录、同步 `.venv` 并用其中的 `pythonw.exe` 启动。工具需要 Windows 桌面会话；无图形桌面的 CI 或远程会话中不要把 GUI 启动作为自动化测试步骤。
 
 ## 测试
 
 在项目根目录运行单元测试：
 
 ```powershell
-python -m unittest discover -s tests -v
+uv run --locked python -m unittest discover -s tests -v
 ```
 
 仅运行某个测试文件时，例如：
 
 ```powershell
-python -m unittest discover -s tests -p test_steps_execution.py -v
+uv run --locked python -m unittest discover -s tests -p test_steps_execution.py -v
 ```
 
 ## 使用注意

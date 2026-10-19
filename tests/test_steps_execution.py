@@ -1,5 +1,7 @@
 import json
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -55,13 +57,73 @@ class StepsExecutionTests(unittest.TestCase):
     def test_start_dispatches_actions_and_finishes_paused(self):
         execution = _Execution(self.steps._core, self.recording, "pause")
         self.steps.start(execution)
-        execution._thread.join(timeout=2)
+        self.steps.wait(execution)
 
         self.assertFalse(execution._thread.is_alive())
         self.assertEqual(execution.state, "paused")
         self.input.key_down.assert_called_once_with("a")
         self.input.key_up.assert_called_once_with("a")
         self.assertEqual(execution._index, 2)
+
+    def test_wait_blocks_until_worker_thread_finishes(self):
+        started = threading.Event()
+        release = threading.Event()
+        finished_waiting = threading.Event()
+        self.input.key_down.side_effect = lambda _key: (started.set(), release.wait())
+        execution = _Execution(self.steps._core, self.recording, "pause")
+        self.steps.start(execution)
+        self.assertTrue(started.wait(timeout=1))
+
+        waiter = threading.Thread(
+            target=lambda: (self.steps.wait(execution), finished_waiting.set()),
+            daemon=True,
+        )
+        waiter.start()
+        self.assertFalse(finished_waiting.wait(timeout=0.05))
+
+        release.set()
+        waiter.join(timeout=1)
+        self.assertTrue(finished_waiting.is_set())
+        self.assertFalse(execution._worker_thread.is_alive())
+        self.assertEqual(execution.state, "paused")
+
+    def test_wait_returns_immediately_when_execution_has_not_started(self):
+        execution = _Execution(self.steps._core, self.recording, "pause")
+        self.assertIsNone(self.steps.wait(execution))
+
+    def test_wait_keeps_waiting_while_worker_is_manually_paused(self):
+        recording = {
+            **self.recording,
+            "actions": [{"type": "click", "button": "left", "timestamp_ns": 10_000_000_000}],
+        }
+        execution = _Execution(self.steps._core, recording, "pause")
+        finished_waiting = threading.Event()
+        self.steps.start(execution)
+        deadline = time.monotonic() + 1
+        while execution._state != "running" and time.monotonic() < deadline:
+            time.sleep(0.001)
+        self.assertEqual(execution._state, "running")
+        self.steps.pause(execution)
+
+        waiter = threading.Thread(
+            target=lambda: (self.steps.wait(execution), finished_waiting.set()),
+            daemon=True,
+        )
+        waiter.start()
+        self.assertFalse(finished_waiting.wait(timeout=0.05))
+
+        self.steps.abort(execution)
+        waiter.join(timeout=1)
+        self.assertTrue(finished_waiting.is_set())
+        self.assertFalse(execution._worker_thread.is_alive())
+
+    def test_wait_joins_worker_after_end_abort_disposes_execution(self):
+        execution = _Execution(self.steps._core, {**self.recording, "actions": []}, "abort")
+        self.steps.start(execution)
+
+        self.assertIsNone(self.steps.wait(execution))
+        self.assertTrue(execution._closed)
+        self.assertFalse(execution._worker_thread.is_alive())
 
     def test_deadline_crossing_during_wait_does_not_sleep_negative_duration(self):
         recording = {

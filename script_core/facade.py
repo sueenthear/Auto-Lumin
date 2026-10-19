@@ -6,6 +6,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from ._logging import DoLogger
 from .core import ScriptCore
 from .image_manager.matcher import TemplateMatcher
 from .interrupt import Interrupt
@@ -13,64 +14,86 @@ from .pixel import Pixel
 from .steps import load_steps
 
 
+def _log(logger, source: str, message: str) -> None:
+    if logger is not None:
+        logger.write(source, message)
+
+
 class _MouseButtons:
-    def __init__(self, callback):
+    def __init__(self, callback, logger, source):
         self._callback = callback
+        self._logger = logger
+        self._source = source
+
+    def _invoke(self, button):
+        _log(self._logger, f"{self._source}.{button}", button)
+        return self._callback(button)
 
     @property
     def left(self) -> None:
-        return self._callback("left")
+        return self._invoke("left")
 
     @property
     def right(self) -> None:
-        return self._callback("right")
+        return self._invoke("right")
 
     @property
     def middle(self) -> None:
-        return self._callback("middle")
+        return self._invoke("middle")
 
     @property
     def xfront(self) -> None:
-        return self._callback("xfront")
+        return self._invoke("xfront")
 
     @property
     def xbehind(self) -> None:
-        return self._callback("xbehind")
+        return self._invoke("xbehind")
 
 
 class _MouseRoll:
-    def __init__(self, callback):
+    def __init__(self, callback, logger):
         self._callback = callback
+        self._logger = logger
+
+    def _invoke(self, direction):
+        _log(self._logger, f"do.mouse.roll.{direction}", direction)
+        return self._callback(direction)
 
     @property
     def up(self) -> None:
-        return self._callback("up")
+        return self._invoke("up")
 
     @property
     def down(self) -> None:
-        return self._callback("down")
+        return self._invoke("down")
 
 
 class _MoveSettings:
-    def __init__(self, move):
+    def __init__(self, move, logger, source):
         self._move = move
+        self._logger = logger
+        self._source = source
 
     def abs(self, key: str, value: float) -> None:
+        _log(self._logger, f"{self._source}.abs", f"{key}={value}")
         self._move._set("abs", key, value)
 
     def rel(self, key: str, value: float) -> None:
+        _log(self._logger, f"{self._source}.rel", f"{key}={value}")
         self._move._set("rel", key, value)
 
 
 class _Move:
-    def __init__(self, core):
+    def __init__(self, core, logger):
         self._core = core
+        self._logger = logger
         self.defaults = {"abs": {"duration": 0.5, "fps": 60}, "rel": {"duration": 0.5, "fps": 60}}
-        self.set = _MoveSettings(self)
+        self.set = _MoveSettings(self, logger, "do.mouse.move.set")
 
     def abs(
         self, x: int, y: int, duration: float | None = None, fps: int | None = None
     ) -> None:
+        _log(self._logger, "do.mouse.move.abs", f"x={x}, y={y}, duration={duration}, fps={fps}")
         settings = self.defaults["abs"]
         self._core.input.move_to(
             x,
@@ -82,6 +105,7 @@ class _Move:
     def rel(
         self, dx: int, dy: int, duration: float | None = None, fps: int | None = None
     ) -> None:
+        _log(self._logger, "do.mouse.move.rel", f"dx={dx}, dy={dy}, duration={duration}, fps={fps}")
         settings = self.defaults["rel"]
         self._core.input.move_by(
             dx,
@@ -104,16 +128,17 @@ class _Mouse:
     move: _Move
     set: _MoveSettings
 
-    def __init__(self, core):
+    def __init__(self, core, logger=None):
         self._core = core
-        self._click = _MouseButtons(core.input.click)
-        self._down = _MouseButtons(core.input.mouse_down)
-        self._up = _MouseButtons(core.input.mouse_up)
+        self._click = _MouseButtons(core.input.click, logger, "do.mouse.click")
+        self._down = _MouseButtons(core.input.mouse_down, logger, "do.mouse.down")
+        self._up = _MouseButtons(core.input.mouse_up, logger, "do.mouse.up")
         self._roll = _MouseRoll(
-            lambda direction: core.input.scroll(dy=1 if direction == "up" else -1)
+            lambda direction: core.input.scroll(dy=1 if direction == "up" else -1),
+            logger,
         )
-        self.move = _Move(core)
-        self.set = self.move.set
+        self.move = _Move(core, logger)
+        self.set = _MoveSettings(self.move, logger, "do.mouse.set")
 
     @property
     def click(self) -> _MouseButtons:
@@ -133,10 +158,11 @@ class _Mouse:
 
 
 class _CallableTuple(tuple):
-    def __new__(cls, value, setter, position=None):
+    def __new__(cls, value, setter, position=None, logger=None):
         result = super().__new__(cls, value)
         result.setter = setter
         result.position = position
+        result.logger = logger
         return result
 
     def __call__(self, *args):
@@ -147,30 +173,41 @@ class _CallableTuple(tuple):
             x, y, width, height = args
         else:
             raise TypeError("size expects (width, height) or (x, y, width, height)")
+        _log(self.logger, "do.window.size", f"set ({x}, {y}, {width}, {height})")
         return self.setter(x, y, width, height)
 
 
 class _CallableString(str):
-    def __new__(cls, value, setter):
+    def __new__(cls, value, setter, logger=None):
         result = super().__new__(cls, value)
         result.setter = setter
+        result.logger = logger
         return result
 
     def __call__(self, value):
+        _log(self.logger, "do.window.title", "set title")
         return self.setter(value)
 
 
 class _Window:
-    def __init__(self, core):
+    def __init__(self, core, logger=None):
         self._core = core
-        self.hwnd = core.window.hwnd
+        self._logger = logger
+        self._hwnd = core.window.hwnd
+
+    @property
+    def hwnd(self):
+        _log(self._logger, "do.window.hwnd", "get hwnd")
+        return self._hwnd
 
     @property
     def size(self):
+        _log(self._logger, "do.window.size", "get size")
         return _CallableTuple(
             self._core.window.client_size,
             self._size,
             self._core.window.position,
+            self._logger,
         )
 
     def _size(self, x, y, width, height):
@@ -179,78 +216,108 @@ class _Window:
 
     @property
     def alive(self):
+        _log(self._logger, "do.window.alive", "get alive")
         return self._core.window.alive
 
     @property
     def position(self):
+        _log(self._logger, "do.window.position", "get position")
         return self._core.window.position
 
     @property
     def visible(self):
+        _log(self._logger, "do.window.visible", "get visible")
         return self._core.window.visible
 
     @property
     def minimized(self):
+        _log(self._logger, "do.window.minimized", "get minimized")
         return self._core.window.minimized
 
     def activate(self, timeout=2.0):
+        _log(self._logger, "do.window.activate", f"timeout={timeout}")
         return self._core.window.activate(timeout)
 
     def is_foreground(self):
+        _log(self._logger, "do.window.is_foreground", "check foreground")
         return self._core.window.is_foreground()
 
     def require_foreground(self):
+        _log(self._logger, "do.window.require_foreground", "require foreground")
         self._core.window.require_foreground()
 
     @property
     def title(self):
-        return _CallableString(self._core.window.title, self._core.window.set_title)
+        _log(self._logger, "do.window.title", "get title")
+        return _CallableString(self._core.window.title, self._core.window.set_title, self._logger)
 
 
 class _Keyboard:
-    def __init__(self, core):
+    def __init__(self, core, logger=None):
         self._core = core
+        self._logger = logger
 
     def click(self, key, down_time=0.02):
+        _log(self._logger, "do.keyboard.click", f"key={key!r}, down_time={down_time}")
         self._core.input.press_key(key, down_time)
 
     def down(self, key):
+        _log(self._logger, "do.keyboard.down", f"key={key!r}")
         self._core.input.key_down(key)
 
     def up(self, key):
+        _log(self._logger, "do.keyboard.up", f"key={key!r}")
         self._core.input.key_up(key)
 
     def text(self, text, interval=0.0):
+        _log(self._logger, "do.keyboard.text", f"length={len(text)}, interval={interval}")
         self._core.input.type_text(text, interval)
 
 
 class _Image:
-    def __init__(self, core):
+    def __init__(self, core, logger=None):
         self._core = core
+        self._logger = logger
 
     @property
     def screenshot(self):
+        _log(self._logger, "do.image.screenshot", "capture screenshot")
         return self._core.image.screenshot()
 
-    @staticmethod
-    def load(filepath):
+    def load(self, filepath):
+        _log(self._logger, "do.image.load", f"filepath={filepath!s}")
         return TemplateMatcher.load_image(filepath)
 
-    @staticmethod
-    def loads(dirpath):
+    def loads(self, dirpath):
+        _log(self._logger, "do.image.loads", f"dirpath={dirpath!s}")
         return {p.stem: TemplateMatcher.load_image(p) for p in Path(dirpath).glob("*.png")}
 
-    @staticmethod
-    def save(img, filepath):
-        TemplateMatcher.save_image(filepath, img)
+    def save(self, img, filepath):
+        _log(self._logger, "do.image.save", f"filepath={filepath!s}")
+        return TemplateMatcher.save_image(filepath, img)
+
+
+class _MatchSettings:
+    def __init__(self, match, logger):
+        self._match = match
+        self._logger = logger
+
+    def printlog(self, value):
+        _log(self._logger, "do.match.set.printlog", f"printlog={bool(value)}")
+        self._match._printlog = bool(value)
+
+    def way(self, value):
+        _log(self._logger, "do.match.set.way", f"way={value!r}")
+        self._match._set_way(value)
 
 
 class _Match:
-    def __init__(self, core):
+    def __init__(self, core, logger=None):
         self._core = core
+        self._logger = logger
         self._printlog = False
         self._way = 5
-        self.set = type("MatchSettings", (), {"printlog": lambda _, value: setattr(self, "_printlog", bool(value)), "way": lambda _, value: self._set_way(value)})()
+        self.set = _MatchSettings(self, logger)
 
     def _set_way(self, way):
         import cv2
@@ -267,6 +334,10 @@ class _Match:
         self._way = methods[way]
 
     def pos(self, template, source=None, threshold=0.8, roi=None, title="match!"):
+        _log(self._logger, "do.match.pos", f"threshold={threshold}, roi={roi}")
+        return self._pos(template, source, threshold, roi, title)
+
+    def _pos(self, template, source=None, threshold=0.8, roi=None, title="match!"):
         import cv2
         image = TemplateMatcher.load_image(template) if isinstance(template, (str, Path)) else template
         frame = source if source is not None else self._core.image.screenshot()
@@ -290,24 +361,27 @@ class _Match:
             return None
         return result.center[0] + ox, result.center[1] + oy
 
-    def exist(self, *args, **kwargs):
-        return self.pos(*args, **kwargs) is not None
-
+    def exist(self, template, source=None, threshold=0.8, roi=None, title="match!"):
+        _log(self._logger, "do.match.exist", f"threshold={threshold}, roi={roi}")
+        return self._pos(template, source, threshold, roi, title) is not None
 
 class _Execution:
-    def __init__(self, core, steps, end):
+    def __init__(self, core, steps, end, logger=None):
         if end not in ("pause", "abort"):
             raise ValueError("end must be 'pause' or 'abort'")
         self.core, self.steps, self.end = core, steps, end
+        self._logger = logger
         self._state = "ready"
         self._closed = False
-        self.error = None
+        self._error = None
         self.elapsed = 0.0
         self._resume = threading.Event()
         self._cancel = threading.Event()
         self._thread = None
+        self._worker_thread = None
         self._index = 0
         self._started_at = None
+        self._state_changed = threading.Condition()
 
     def _ensure_active(self):
         if self._closed:
@@ -315,48 +389,73 @@ class _Execution:
 
     @property
     def state(self):
-        self._ensure_active()
-        return self._state
+        with self._state_changed:
+            self._ensure_active()
+            value = self._state
+        _log(self._logger, "do.steps.state", f"{value}")
+        return value
 
     @state.setter
     def state(self, value):
-        self._ensure_active()
-        self._state = value
+        with self._state_changed:
+            self._ensure_active()
+            changed = self._state != value
+            self._state = value
+            if changed:
+                self._state_changed.notify_all()
+        if changed:
+            _log(self._logger, "do.steps.state", f"{value}")
+
+    @property
+    def error(self):
+        _log(self._logger, "do.steps.error", repr(self._error))
+        return self._error
+
+    @error.setter
+    def error(self, value):
+        self._error = value
+        _log(self._logger, "do.steps.error", repr(value))
 
     @property
     def time(self):
         self._ensure_active()
-        if self._started_at is None:
-            return self.elapsed
-        return self.elapsed + time.monotonic() - self._started_at
+        value = self.elapsed if self._started_at is None else self.elapsed + time.monotonic() - self._started_at
+        _log(self._logger, "do.steps.time", f"{value:.3f}s")
+        return value
 
     def _dispose(self):
         if self._closed:
             return
-        self._closed = True
-        self.core = self.steps = self.end = None
-        self._resume = self._cancel = self._thread = None
-        self._started_at = None
-        self.elapsed = 0.0
-        self._index = 0
-        self._state = None
+        with self._state_changed:
+            self._closed = True
+            self.core = self.steps = self.end = None
+            self._resume = self._cancel = self._thread = None
+            self._started_at = None
+            self.elapsed = 0.0
+            self._index = 0
+            self._state = None
+            self._state_changed.notify_all()
 
 
 class _Steps:
-    def __init__(self, core):
+    def __init__(self, core, logger=None):
         self._core = core
+        self._logger = logger
 
     def load(self, filepath, end="pause"):
-        return _Execution(self._core, load_steps(filepath), end)
+        _log(self._logger, "do.steps.load", f"filepath={filepath!s}, end={end}")
+        return _Execution(self._core, load_steps(filepath), end, self._logger)
 
     def loads(self, dirpath, end="pause"):
+        _log(self._logger, "do.steps.loads", f"dirpath={dirpath!s}, end={end}")
         return {
-            path.stem: _Execution(self._core, load_steps(path), end)
+            path.stem: _Execution(self._core, load_steps(path), end, self._logger)
             for path in Path(dirpath).glob("*.stepscript")
         }
 
     @staticmethod
     def info(execution):
+        _log(execution._logger, "do.steps.info", "read steps info")
         execution._ensure_active()
         actions = execution.steps["actions"]
         duration_ns = execution.steps.get("info", {}).get(
@@ -375,16 +474,42 @@ class _Steps:
 
     @staticmethod
     def start(obj):
-        if obj.state not in ("ready", "paused"):
-            raise RuntimeError("execution cannot be started in its current state")
-        obj.error = None
-        obj._resume.set()
-        obj._started_at = time.monotonic()
-        obj.state = "running"
-        if obj._thread is not None and obj._thread.is_alive():
+        _log(obj._logger, "do.steps.start", "start execution")
+        with obj._state_changed:
+            obj._ensure_active()
+            if obj._state not in ("ready", "paused"):
+                raise RuntimeError("execution cannot be started in its current state")
+            obj.error = None
+            obj._resume.set()
+            obj._started_at = time.monotonic()
+            if obj._thread is not None and obj._thread.is_alive():
+                obj._state = "running"
+                obj._state_changed.notify_all()
+                _log(obj._logger, "do.steps.state", "running")
+                return
+
+            worker = threading.Thread(target=_Steps._run, args=(obj,), daemon=False)
+            obj._thread = obj._worker_thread = worker
+            try:
+                worker.start()
+            except Exception:
+                obj._thread = obj._worker_thread = None
+                obj._started_at = None
+                raise
+            obj._state = "running"
+            obj._state_changed.notify_all()
+            _log(obj._logger, "do.steps.state", "running")
+
+    @staticmethod
+    def wait(obj):
+        _log(obj._logger, "do.steps.wait", "wait for execution to finish")
+        with obj._state_changed:
+            worker = obj._worker_thread
+        if worker is None:
             return
-        obj._thread = threading.Thread(target=_Steps._run, args=(obj,), daemon=False)
-        obj._thread.start()
+        if worker is threading.current_thread():
+            raise RuntimeError("an execution cannot wait for its own worker thread")
+        worker.join()
 
     @staticmethod
     def _run(obj):
@@ -425,6 +550,7 @@ class _Steps:
                     obj._started_at = time.monotonic()
                     obj.state = "running"
                 kind = action["type"]
+                _log(obj._logger, f"do.steps.action.{kind}", str(action.get("key", action.get("button", ""))))
                 if kind == "key_down":
                     key = action["key"]
                     obj.core.input.key_down(key)
@@ -454,11 +580,13 @@ class _Steps:
             obj._started_at = None
             for key in pressed_keys:
                 try:
+                    _log(obj._logger, "do.steps.action.key_up", repr(key))
                     obj.core.input.key_up(key)
                 except Exception:
                     pass
             for button in pressed_buttons:
                 try:
+                    _log(obj._logger, "do.steps.action.mouse_up", repr(button))
                     obj.core.input.mouse_up(button)
                 except Exception:
                     pass
@@ -468,6 +596,7 @@ class _Steps:
 
     @staticmethod
     def pause(obj):
+        _log(obj._logger, "do.steps.pause", "pause execution")
         if obj.state == "running":
             obj.elapsed = obj.time
             obj._started_at = None
@@ -476,6 +605,7 @@ class _Steps:
 
     @staticmethod
     def abort(obj):
+        _log(obj._logger, "do.steps.abort", "abort execution")
         obj._ensure_active()
         obj._cancel.set()
         obj._resume.set()
@@ -486,6 +616,7 @@ class _Steps:
 
     @staticmethod
     def reset(obj):
+        _log(obj._logger, "do.steps.reset", "reset execution")
         obj._ensure_active()
         if obj._thread and obj._thread.is_alive():
             raise RuntimeError("execution must stop before reset")
@@ -493,27 +624,40 @@ class _Steps:
         obj.state = "ready"
 
 
+class _LogAPI:
+    def __init__(self, logger):
+        self._logger = logger
+
+    def output(self, enabled: bool) -> None:
+        self._logger.output(enabled)
+
+
 class AutomationCore:
     mouse: _Mouse
 
     def __init__(self, core):
         self._core = core
-        self.window, self.image = _Window(core), _Image(core)
-        self.pixel = Pixel(self.image.screenshot)
-        self.match, self.steps = _Match(core), _Steps(core)
-        self.mouse = _Mouse(core)
-        self.keyboard = _Keyboard(core)
-        self.interrupt = Interrupt()
+        self._logger = DoLogger()
+        self.log = _LogAPI(self._logger)
+        self.window = _Window(core, self._logger)
+        self.image = _Image(core, self._logger)
+        self.pixel = Pixel(core.image.screenshot, self._logger)
+        self.match = _Match(core, self._logger)
+        self.steps = _Steps(core, self._logger)
+        self.mouse = _Mouse(core, self._logger)
+        self.keyboard = _Keyboard(core, self._logger)
+        self.interrupt = Interrupt(self._logger)
 
     @property
     def thisfile(self) -> None:
         """Change the working directory to the file accessing this property."""
         caller_path = sys._getframe(1).f_code.co_filename
+        _log(getattr(self, "_logger", None), "do.thisfile", f"chdir {Path(caller_path).resolve().parent}")
         os.chdir(Path(caller_path).resolve().parent)
 
-    @staticmethod
-    def wait(seconds: float) -> None:
+    def wait(self, seconds: float) -> None:
         """Pause the current thread for a nonnegative number of seconds."""
         if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or not math.isfinite(seconds) or seconds < 0:
             raise ValueError("wait seconds must be a finite nonnegative number")
+        _log(getattr(self, "_logger", None), "do.wait", f"{seconds}s")
         time.sleep(seconds)

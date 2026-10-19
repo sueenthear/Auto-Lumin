@@ -7,11 +7,11 @@
 在项目根目录执行：
 
 ```powershell
-py -3 -m pip install -r dev_tool\ok_lumin_tool\requirements.txt
-py -m dev_tool.ok_lumin_tool
+uv sync --locked
+uv run python -m dev_tool.ok_lumin_tool
 ```
 
-也可以双击 `dev_tool\启动.bat`。
+也可以双击 `dev_tool\启动.bat`。启动脚本会按自身所在位置找到项目根目录，自动运行 `uv sync --locked`，再使用项目 `.venv` 中的 `pythonw.exe` 启动，不依赖当前工作目录或全局 Python 的依赖状态。
 
 ## 功能
 
