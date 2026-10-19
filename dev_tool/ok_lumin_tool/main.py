@@ -54,8 +54,13 @@ class UnifiedTool:
         self.capture = CaptureController(root, self._set_capture_status)
         self._build_capture_tab()
         self._build_action_tab()
+        self.capture.crosshair.bind("<FocusIn>", lambda _event: self._read_crosshair(), add="+")
+        self.capture.crosshair.bind("<Configure>", lambda _event: self._read_crosshair(), add="+")
+        self.capture.region.bind("<FocusIn>", lambda _event: self._read_region(), add="+")
+        self.capture.region.bind("<Configure>", lambda _event: self._read_region(), add="+")
+        self._read_crosshair()
+        self._read_region()
         self._poll_events()
-        self._refresh_capture_values()
 
     @staticmethod
     def _build_style() -> None:
@@ -91,21 +96,23 @@ class UnifiedTool:
         point_frame.pack(fill="x", pady=(0, 8))
         self.point_vars = {name: tk.IntVar(value=0) for name in ("x", "y")}
         self._add_value_fields(point_frame, self.point_vars, ("x", "y"), 0)
-        ttk.Button(point_frame, text="从准心读取", command=self._read_crosshair).grid(row=0, column=5, padx=10)
-        ttk.Button(point_frame, text="复制位置", command=self.capture.copy_crosshair_position).grid(row=0, column=6)
+        ttk.Button(point_frame, text="应用到准心", command=self._apply_crosshair).grid(row=0, column=5, padx=(10, 4))
+        ttk.Button(point_frame, text="从准心读取", command=self._read_crosshair).grid(row=0, column=6, padx=4)
+        ttk.Button(point_frame, text="复制准心位置", command=self.capture.copy_crosshair_position).grid(row=0, column=7, padx=4)
         self.point_visible = tk.BooleanVar(value=True)
         ttk.Checkbutton(point_frame, text="显示准心", variable=self.point_visible,
-                        command=self._toggle_overlays).grid(row=0, column=7, padx=(18, 0))
+                        command=self._toggle_overlays).grid(row=0, column=8, padx=(14, 0))
 
         region_frame = ttk.LabelFrame(tab, text="区域框：取区域", padding=8)
         region_frame.pack(fill="x", pady=(0, 8))
         self.region_vars = {name: tk.IntVar(value=self.capture.region_data[name]) for name in ("x", "y", "w", "h")}
         self._add_value_fields(region_frame, self.region_vars, ("x", "y", "w", "h"), 0)
-        ttk.Button(region_frame, text="应用到区域框", command=self._apply_region).grid(row=0, column=9, padx=10)
-        ttk.Button(region_frame, text="读取区域框", command=self._read_region).grid(row=0, column=10)
+        ttk.Button(region_frame, text="应用到区域", command=self._apply_region).grid(row=0, column=9, padx=(10, 4))
+        ttk.Button(region_frame, text="读取区域", command=self._read_region).grid(row=0, column=10, padx=4)
+        ttk.Button(region_frame, text="复制区域位置", command=self.capture.copy_region_position).grid(row=0, column=11, padx=4)
         self.region_visible = tk.BooleanVar(value=True)
         ttk.Checkbutton(region_frame, text="显示区域框", variable=self.region_visible,
-                        command=self._toggle_overlays).grid(row=0, column=11, padx=(18, 0))
+                        command=self._toggle_overlays).grid(row=0, column=12, padx=(14, 0))
 
         action_frame = ttk.LabelFrame(tab, text="截图", padding=8)
         action_frame.pack(fill="x", pady=(0, 8))
@@ -147,6 +154,14 @@ class UnifiedTool:
         self.point_vars["x"].set(x)
         self.point_vars["y"].set(y)
 
+    def _apply_crosshair(self) -> None:
+        try:
+            data = {name: int(var.get()) for name, var in self.point_vars.items()}
+            self.capture.apply_crosshair_data(data)
+            self._set_capture_status("已应用准心坐标")
+        except (TypeError, tk.TclError, ValueError) as error:
+            messagebox.showerror("坐标无效", str(error), parent=self.root)
+
     def _read_region(self) -> None:
         data = self.capture.get_region_data()
         for name, value in data.items():
@@ -154,7 +169,9 @@ class UnifiedTool:
 
     def _apply_region(self) -> None:
         try:
-            data = {name: max(1, int(var.get())) for name, var in self.region_vars.items()}
+            data = {name: int(var.get()) for name, var in self.region_vars.items()}
+            data["w"] = max(1, data["w"])
+            data["h"] = max(1, data["h"])
             self.capture.apply_region_data(data)
             self._set_capture_status("已应用区域框坐标")
         except (TypeError, tk.TclError, ValueError) as error:
@@ -167,14 +184,6 @@ class UnifiedTool:
     def _toggle_overlays(self) -> None:
         self.capture.set_visible(self.point_visible.get())
         self.capture.set_region_visible(self.region_visible.get())
-
-    def _refresh_capture_values(self) -> None:
-        if not self.root.winfo_exists():
-            return
-        if self.capture.crosshair.winfo_exists() and self.capture.region.winfo_exists():
-            self._read_crosshair()
-            self._read_region()
-        self.root.after(350, self._refresh_capture_values)
 
     def _open_screenshot_dir(self) -> None:
         path = Path.cwd() / "screenshot"

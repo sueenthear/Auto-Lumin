@@ -214,6 +214,11 @@ class CaptureController:
         self.region_data["h"] = self.region.winfo_height()
         self.crosshair_xy[:] = [self.crosshair.winfo_x(), self.crosshair.winfo_y()]
 
+    def apply_crosshair_data(self, data: dict[str, int]) -> None:
+        """Apply client-area crosshair coordinates and move its overlay."""
+        self.point_data.update(data)
+        self.sync_overlay_to_data()
+
     def apply_region_data(self, data: dict[str, int]) -> None:
         """Apply client-area region data without changing the independent crosshair."""
         self.region_data.update(data)
@@ -236,6 +241,13 @@ class CaptureController:
         self.root.clipboard_clear()
         self.root.clipboard_append(f"({x},{y})")
         self.on_status(f"已复制准心位置 ({x},{y})")
+
+    def copy_region_position(self) -> None:
+        data = self.get_region_data()
+        position = f"({data['x']},{data['y']})"
+        self.root.clipboard_clear()
+        self.root.clipboard_append(position)
+        self.on_status(f"已复制区域位置 {position}")
 
     def _start_crosshair_drag(self, event) -> None:
         self._crosshair_drag = (event.x_root, event.y_root, self.crosshair.winfo_x(), self.crosshair.winfo_y())
