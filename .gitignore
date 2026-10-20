@@ -20,3 +20,6 @@ Task/
 ds/
 test.png
 *.stepscript
+
+# Local agent/push notes (never publish)
+推送说明.md
