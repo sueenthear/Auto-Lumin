@@ -4,8 +4,13 @@ Windows automation utilities for binding a target application window, capturing 
 
 ## Components
 
-- `script_core/`: reusable Python API for window, keyboard, mouse, image, pixel, and action-sequence operations.
+- `script_core/`: reusable Python API for window, keyboard, mouse, image, pixel, audio matching, and action-sequence operations.
 - `dev_tool/ok_lumin_tool/`: desktop utility for window positioning, screenshots, and recording or replaying actions.
+- `dev_tool/audio_recorder.py`: desktop utility for recording, auditioning and trimming process-scoped `.voice` audio templates.
+
+## Audio matching
+
+`do.audio` matches sound played by the process bound to `Core(...)` only. Quick start, template recording workflow, trigger rules and troubleshooting are in [script_core/audio_manager/使用说明.md](script_core/audio_manager/使用说明.md); the API reference is in [script_core/use.md](script_core/use.md).
 - `example/`: minimal API example that inspects a window and optionally saves a screenshot without sending keyboard or mouse input.
 - `tests/`: unit tests.
 

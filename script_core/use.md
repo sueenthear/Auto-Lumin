@@ -209,3 +209,27 @@ print(execute.time)                            # 累计运行秒数
 ```
 
 `start` 在后台线程回放；`end="pause"` 时完成后保持 `paused`，`end="abort"` 时完成后自动清理对象。执行异常不会静默丢失：实例状态变为 `failed`，异常保存在 `execute.error`。`pause` 可暂停，之后再次 `start` 从暂停处继续；`reset` 在工作线程结束后归零；`abort` 会等待线程退出并清理实例。清理后不得查询或重用该实例。由于工作线程是非 daemon 线程，解释器会等待已启动的序列结束；需要提前退出时调用 `do.steps.abort(execute)`。
+
+## 音频匹配 API
+
+只监听当前 `Core(...)` 绑定窗口所属进程及其子进程播放的声音，不会混入系统混音或其他程序：
+
+```python
+def on_sound():
+    do.keyboard.click("ESC")
+
+do.audio.action(on_sound)          # 注册匹配后调用的无参数函数
+do.audio.listen.threshold(0.8)     # 相似度阈值，取值 (0, 1]，默认 0.8
+do.audio.listen.start()            # 不传路径时自动查找 template.voice
+do.audio.listen.start("my.voice")  # 或显式指定模板文件
+print(do.audio.listen.listening, do.audio.listen.error)
+do.audio.listen.stop()
+```
+
+`start(template=None)` 只查包内自带的 `script_core/audio_manager/template.voice`，工作目录中的同名文件会被忽略；包内文件缺失时抛 `FileNotFoundError`。模板必须是 `.voice` 文件，内容为 16 kHz、单声道、16 位 PCM 的 WAV（可直接用支持 WAV 的播放器试听），长度 0.04 至 10 秒，且不能是静音。`listen` 为后台线程：同一声音越过阈值只触发一次，出现约 40 毫秒静音或一个模板长度的持续不匹配后才重新武装，因此连续播放会再次触发。
+
+`action` 在独立线程执行，未注册动作或上一动作仍在运行时不会重入。动作抛出的异常保存在 `listen.error` 并停止监听；绑定窗口退出或 PID 变更时监听自动终止，同样可从 `error` 读取原因。`start` 失败（激活失败、无权限、启动超时等）会抛出异常并清理线程，不会留下半开状态。该功能依赖 Windows 进程独立 loopback，仅支持 Windows Build 20348 及以上，低版本直接报错而不回退为系统混音。
+
+`dev_tool/audio_recorder.py` 提供配套的录制与剪辑界面（`python -m dev_tool.audio_recorder`，或双击项目根目录的 `启动录音剪辑工具.bat`）：绑定目标 exe 后按 F8 开始录制、F9 结束并保存，再打开 `.voice` 试听整段或剪辑区间，并把剪辑保存为新模板。
+
+完整操作步骤、触发规则与常见问题见 [audio_manager/使用说明.md](audio_manager/使用说明.md)。

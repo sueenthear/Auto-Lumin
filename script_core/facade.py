@@ -7,6 +7,7 @@ import threading
 import time
 from pathlib import Path
 from ._logging import DoLogger
+from .audio_manager import AudioManager
 from .core import ScriptCore
 from .image_manager.matcher import TemplateMatcher
 from .interrupt import Interrupt
@@ -624,6 +625,43 @@ class _Steps:
         obj.state = "ready"
 
 
+class _AudioListen:
+    def __init__(self, manager, logger):
+        self._manager = manager
+        self._logger = logger
+
+    def start(self, template=None) -> None:
+        _log(self._logger, "do.audio.listen.start", f"template={template!s}")
+        self._manager.start(template)
+
+    def threshold(self, value: float) -> None:
+        _log(self._logger, "do.audio.listen.threshold", f"threshold={value}")
+        self._manager.set_threshold(value)
+
+    def stop(self) -> None:
+        _log(self._logger, "do.audio.listen.stop", "stop listening")
+        self._manager.stop()
+
+    @property
+    def listening(self) -> bool:
+        return self._manager.listening
+
+    @property
+    def error(self):
+        return self._manager.error
+
+
+class _Audio:
+    def __init__(self, window, logger):
+        self._manager = AudioManager(window)
+        self._logger = logger
+        self.listen = _AudioListen(self._manager, logger)
+
+    def action(self, func) -> None:
+        _log(self._logger, "do.audio.action", "register audio action")
+        self._manager.set_action(func)
+
+
 class _LogAPI:
     def __init__(self, logger):
         self._logger = logger
@@ -646,6 +684,7 @@ class AutomationCore:
         self.steps = _Steps(core, self._logger)
         self.mouse = _Mouse(core, self._logger)
         self.keyboard = _Keyboard(core, self._logger)
+        self.audio = _Audio(core.window, self._logger)
         self.interrupt = Interrupt(self._logger)
 
     @property

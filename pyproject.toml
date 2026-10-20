@@ -7,6 +7,7 @@ include = ["script_core*"]
 
 [tool.setuptools.package-data]
 script_core = ["py.typed", "use.md"]
+"script_core.audio_manager" = ["template.voice"]
 
 [project]
 name = "ok-lumin-new"
