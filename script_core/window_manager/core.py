@@ -161,12 +161,14 @@ class WindowManager:
         style = win32gui.GetWindowLong(self.hwnd, win32con.GWL_STYLE)
         extended_style = win32gui.GetWindowLong(self.hwnd, win32con.GWL_EXSTYLE)
         menu = win32gui.GetMenu(self.hwnd)
-        left, top, right, bottom = win32gui.GetClientRect(self.hwnd)
-        outer = win32gui.AdjustWindowRectEx(
-            (left, top, left + width, top + height), style, bool(menu), extended_style
-        )
-        outer_width = outer[2] - outer[0]
-        outer_height = outer[3] - outer[1]
+        outer = wintypes.RECT(0, 0, width, height)
+        adjust = ctypes.WinDLL("user32", use_last_error=True).AdjustWindowRectEx
+        adjust.argtypes = (ctypes.POINTER(wintypes.RECT), wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        adjust.restype = wintypes.BOOL
+        if not adjust(ctypes.byref(outer), style, bool(menu), extended_style):
+            raise ctypes.WinError(ctypes.get_last_error())
+        outer_width = outer.right - outer.left
+        outer_height = outer.bottom - outer.top
         win32gui.SetWindowPos(
             self.hwnd,
             None,
