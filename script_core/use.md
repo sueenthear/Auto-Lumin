@@ -230,6 +230,4 @@ do.audio.listen.stop()
 
 `action` 在独立线程执行，未注册动作或上一动作仍在运行时不会重入。动作抛出的异常保存在 `listen.error` 并停止监听；绑定窗口退出或 PID 变更时监听自动终止，同样可从 `error` 读取原因。`start` 失败（激活失败、无权限、启动超时等）会抛出异常并清理线程，不会留下半开状态。该功能依赖 Windows 进程独立 loopback，仅支持 Windows Build 20348 及以上，低版本直接报错而不回退为系统混音。
 
-`dev_tool/audio_recorder.py` 提供配套的录制与剪辑界面（`python -m dev_tool.audio_recorder`，或双击项目根目录的 `启动录音剪辑工具.bat`）：绑定目标 exe 后按 F8 开始录制、F9 结束并保存，再打开 `.voice` 试听整段或剪辑区间，并把剪辑保存为新模板。
-
-完整操作步骤、触发规则与常见问题见 [audio_manager/使用说明.md](audio_manager/使用说明.md)。
+模板的容器格式、时长限制、内容要求与制作方式见 [audio_manager/voice文件规范.md](audio_manager/voice文件规范.md)。

@@ -100,18 +100,6 @@ class AudioTests(unittest.TestCase):
             self.assertEqual(callbacks, [1, 1])
             self.assertIsNone(manager.error)
 
-    def test_record_stop_event_saves_captured_audio_before_duration_limit(self):
-        window = SimpleNamespace(alive=True, process_id=52)
-        stop = threading.Event()
-        sample = tone(1600)
-        manager = AudioManager(window, lambda pid: _Capture(pid, [sample]))
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / 'early-stop.voice'
-            with patch('script_core.audio_manager.manager.check_supported'):
-                result = manager.record(path, 2.0, stop_event=stop, progress=lambda _: stop.set())
-            self.assertEqual(result, path)
-            np.testing.assert_array_equal(load_voice(path), np.frombuffer(sample, dtype='<i2'))
-
     def test_default_template_uses_bundled_file_only(self):
         import script_core.audio_manager.manager as manager_module
         from script_core.audio_manager import default_template
@@ -165,22 +153,6 @@ class AudioTests(unittest.TestCase):
                 manager.stop()
         self.assertIsInstance(manager.error, RuntimeError)
         self.assertFalse(manager.listening)
-
-    def test_record_rejects_invalid_seconds_and_empty_capture(self):
-        window = SimpleNamespace(alive=True, process_id=13)
-        manager = AudioManager(window, lambda pid: _Capture(pid, []))
-        stopped = threading.Event()
-        stopped.set()
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / 'empty.voice'
-            with patch('script_core.audio_manager.manager.check_supported'):
-                for value in (0, -1, float('nan'), float('inf'), True, '1'):
-                    with self.assertRaises(ValueError):
-                        manager.record(path, value)
-                # Stopping before any packet must not write a silent file.
-                with self.assertRaisesRegex(ValueError, '非空'):
-                    manager.record(path, 0.05, stop_event=stopped)
-            self.assertFalse(path.exists())
 
     def test_decode_rejects_truncated_voice_payload(self):
         from script_core.audio_manager.template import encode_voice

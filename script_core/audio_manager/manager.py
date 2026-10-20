@@ -1,14 +1,12 @@
-"""Bound-window process audio matching and bounded VOICE recording."""
+"""Bound-window process audio matching."""
 from __future__ import annotations
 
-import math
 import threading
-import time
 from pathlib import Path
 from typing import Callable
 
 from .loopback import ProcessLoopback, SAMPLE_RATE, SAMPLE_WIDTH, check_supported
-from .template import MAX_SECONDS, VoiceMatcher, load_voice, save_voice
+from .template import VoiceMatcher, load_voice
 
 
 def default_template() -> Path:
@@ -159,41 +157,3 @@ class AudioManager:
                 raise TimeoutError("音频动作线程未能停止")
             if action is not threading.current_thread():
                 self._action_worker = None
-
-    def record(
-        self,
-        path: str | Path,
-        seconds: float,
-        progress: Callable[[float], None] | None = None,
-        stop_event: threading.Event | None = None,
-    ) -> Path:
-        """Record bound-process audio until the limit or an optional stop event."""
-        if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or not math.isfinite(seconds) or not 0 < seconds <= MAX_SECONDS:
-            raise ValueError(f"录音时长必须在 0 到 {MAX_SECONDS} 秒之间")
-        check_supported()
-        pid = self._target_pid()
-        chunks: list[bytes] = []
-        captured = 0
-        required = round(seconds * SAMPLE_RATE * SAMPLE_WIDTH)
-        required -= required % SAMPLE_WIDTH
-        with self.capture_factory(pid) as capture:
-            deadline = time.monotonic() + seconds + 2
-            while captured < required and not (stop_event and stop_event.is_set()):
-                if not self.window.alive or self.window.process_id != pid:
-                    raise RuntimeError("绑定窗口进程已退出或发生变更，录音已取消")
-                if time.monotonic() > deadline:
-                    raise TimeoutError("目标进程没有及时提供音频数据")
-                packet = capture.read()
-                if not packet:
-                    continue
-                needed = required - captured
-                packet = packet[:needed]
-                chunks.append(packet)
-                captured += len(packet)
-                if progress:
-                    progress(captured / (SAMPLE_RATE * SAMPLE_WIDTH))
-        pcm = b"".join(chunks)
-        # Empty recordings are not useful for matching and should not overwrite files.
-        from .template import decode_voice, encode_voice
-        decode_voice(encode_voice(pcm))
-        return save_voice(path, pcm)
