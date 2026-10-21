@@ -297,6 +297,10 @@ class _Image:
         _log(self._logger, "do.image.save", f"filepath={filepath!s}")
         return TemplateMatcher.save_image(filepath, img)
 
+    def close(self):
+        _log(self._logger, "do.image.close", "release capture session")
+        return self._core.image.close()
+
 
 class _MatchSettings:
     def __init__(self, match, logger):
@@ -339,23 +343,14 @@ class _Match:
         return self._pos(template, source, threshold, roi, title)
 
     def _pos(self, template, source=None, threshold=0.8, roi=None, title="match!"):
-        import cv2
         image = TemplateMatcher.load_image(template) if isinstance(template, (str, Path)) else template
         frame = source if source is not None else self._core.image.screenshot()
         ox = oy = 0
         if roi is not None:
             ox, oy, w, h = roi
             frame = frame[oy:oy+h, ox:ox+w]
-        result = TemplateMatcher.find(frame, image, threshold=0)
+        result = TemplateMatcher.find(frame, image, threshold=0, method=self._way)
         score = result.score if result else 0.0
-        if result and self._way != 5:
-            method = self._way
-            needle = TemplateMatcher._to_bgr(image)
-            haystack = TemplateMatcher._to_bgr(frame)
-            values = cv2.matchTemplate(haystack, needle, method)
-            low, high, low_pos, high_pos = cv2.minMaxLoc(values)
-            loc, score = (low_pos, 1 - low) if method == 1 else (high_pos, high)
-            result = type("Match", (), {"center": (loc[0] + needle.shape[1]//2, loc[1] + needle.shape[0]//2)})()
         if self._printlog:
             print(f"{title}: x={None if result is None else result.center[0]+ox}, y={None if result is None else result.center[1]+oy}, score={score}")
         if result is None or score < threshold:

@@ -20,6 +20,15 @@ class ImageManager:
     def screenshot(self, timeout: float = 5.0) -> np.ndarray:
         return self.capture.screenshot(timeout)
 
+    def close(self) -> None:
+        """Release the reused capture session.
+
+        The session is opened lazily on the first screenshot and stays alive
+        for later calls, because creating one WGC session per screenshot leaks
+        native handles. Call this when the window is done being captured.
+        """
+        self.capture.close()
+
     @staticmethod
     def load_image(path: str | Path, *, unchanged: bool = True) -> np.ndarray:
         return TemplateMatcher.load_image(path, unchanged=unchanged)

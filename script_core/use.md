@@ -182,6 +182,10 @@ do.match.set.way("ccoeff")                    # 选择匹配算法
 
 `template` 可为图像或图片路径，`source=None` 时截取当前客户区；`roi=(x, y, width, height)` 在 source 上裁剪，返回的 `(x, y)` 自动加上 ROI 的起点偏移。`pos` 返回最佳模板中心坐标；低于 `threshold` 返回 `None`。`exist` 返回 bool。日志包含 `title`、坐标和分数（即使未达阈值也打印）。可选 `way`：`ccoeff` / `TM_CCOEFF_NORMED`（默认）、`sqdiff` / `TM_SQDIFF_NORMED`、`ccorr` / `TM_CCORR_NORMED`；`sqdiff` 的分数转换为 `1 - 原始分数`，使其与其他方式一样数值越高越相似。
 
+反复调用 `do.match.exist(template)` 无需在脚本中手动释放截图。截图会复用同一个窗口采集会话（`do.image` 首次截图时惰性创建，窗口尺寸变化时自动重建，进程结束时随对象释放）：每次只返回持有当前客户区像素的独立数组，不保留整帧缓冲；这避免了每次识图都新建采集会话而持续累积原生句柄与私有内存——这是长时间 `while not do.match.exist(...)` 轮询最终触发 OpenCV `Insufficient memory` 的根因。若需显式释放采集会话，可调用 `do.image.close()`（`ImageManager.close()`），下次截图会重新创建。
+
+匹配遇到 Python `MemoryError` 或 OpenCV 内存分配失败时，会释放失败调用的临时引用、执行一次垃圾回收，并发出 `RuntimeWarning`，随后以重叠分块方式完整搜索一次；恢复不缩放图像、不改变阈值或坐标。若恢复仍内存不足，会抛出含截图／模板尺寸的 `MemoryError`，不会将资源失败当成“未匹配”而让循环无限等待。其他 OpenCV 错误仍直接抛出。恢复时峰值内存仍取决于模板大小；持续不足请缩小 ROI、关闭高内存程序或检查 Windows 分页文件。
+
 ## 连续操作 API
 
 ```python
