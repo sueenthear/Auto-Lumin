@@ -536,11 +536,11 @@ footer{border-top:1px solid var(--line);padding:56px 0 34px;background:color-mix
     <div class="grid-overlay" aria-hidden="true"></div>
     <div class="wrap hero-grid">
       <div class="hero-copy reveal">
-        <span class="pill"><i class="dot"></i> v1.0 · 启动器已发布</span>
+        <span class="pill"><i class="dot"></i> v1.1 · 变量配置与任务包导入</span>
         <h1>把重复的操作，<br>交给 <span class="grad">Auto Lumin</span>。</h1>
         <p class="sub">
           绑定游戏窗口，识别画面与声音，回放键盘鼠标动作。
-          写一次脚本，之后交给启动器：<strong>环境自检、任务分类、日志与中断</strong>都替你处理好。
+          写一次脚本，之后交给启动器：<strong>环境自检、变量配置、任务包导入与中断</strong>都替你处理好。
         </p>
         <div class="hero-cta">
           <a class="btn btn-primary" href="https://github.com/sueenthear/Auto-Lumin/releases/latest" target="_blank" rel="noopener">
@@ -565,18 +565,18 @@ footer{border-top:1px solid var(--line);padding:56px 0 34px;background:color-mix
           <div class="window-bar">
             <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
             <span class="name">AutoLumin.exe</span>
-            <span class="tag">v1.0</span>
+            <span class="tag">v1.1</span>
           </div>
-          <img id="heroShot" src="assets/screenshots/start-dark.webp" width="1360" height="880" alt="Auto Lumin 启动器启动页：环境检查全部通过">
+          <img id="heroShot" src="assets/screenshots/start-dark.webp" width="1360" height="880" alt="Auto Lumin 启动器启动页：六项必做检查全部通过">
         </div>
-        <p class="hero-note">启动页 · 六项环境检查，全部通过后才可进入任务</p>
+        <p class="hero-note">启动页 · 六项必做检查全通过，7-Zip 快捷导入可选</p>
       </div>
     </div>
 
     <div class="wrap" style="margin-top:64px">
       <div class="stats reveal">
         <div class="stat"><b>04</b><span>启动 / 任务 / 详情 / 运行，顺序推进</span></div>
-        <div class="stat"><b>06</b><span>项环境自检，缺一项就不放行</span></div>
+        <div class="stat"><b>06</b><span>项必做自检，缺一项就不放行</span></div>
         <div class="stat"><b>F12</b><span>全局中断，随时终止脚本</span></div>
       </div>
     </div>
@@ -614,7 +614,17 @@ footer{border-top:1px solid var(--line);padding:56px 0 34px;background:color-mix
         <article class="card reveal">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h13" stroke-linecap="round"/><circle cx="19" cy="17" r="2.2"/></svg></div>
           <h3>任务启动器</h3>
-          <p>递归扫描 <code>Task/</code> 下所有 <code>this.task</code>，分类、搜索、按修改时间排序，一键进入详情与运行。</p>
+          <p>递归扫描 <code>Task/</code> 下所有 <code>this.task</code>，分类、搜索、按修改时间排序；拖入或选择 <code>.zip</code> / <code>.7z</code> / <code>.rar</code> 任务包，检查通过后一键导入。</p>
+        </article>
+        <article class="card reveal">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3v10m0 0 3.6-3.6M12 13 8.4 9.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 15v3.5A2.5 2.5 0 0 0 7 21h10a2.5 2.5 0 0 0 2.5-2.5V15" stroke-linecap="round"/></svg></div>
+          <h3>任务包一键导入</h3>
+          <p>把打包好的任务拖进任务页或点「选择任务包」，<code>.zip</code> / <code>.7z</code> / <code>.rar</code> 都会先校验 <code>this.task</code> 与路径再导入，不覆盖已有任务。</p>
+        </article>
+        <article class="card reveal">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9" stroke-linecap="round"/><circle cx="8" cy="7" r="1.8"/><circle cx="16" cy="12" r="1.8"/></svg></div>
+          <h3>任务变量配置</h3>
+          <p><code>this.task</code> 里声明 <code>var</code>，详情页自动生成数字、开关与文本控件，运行前写回文件；脚本用 <code>do.var()</code> 读取同一份值。</p>
         </article>
         <article class="card reveal">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3v9" stroke-linecap="round"/><path d="M7 6.5a8 8 0 1 0 10 0" stroke-linecap="round"/></svg></div>
@@ -631,7 +641,7 @@ footer{border-top:1px solid var(--line);padding:56px 0 34px;background:color-mix
       <div class="section-head reveal">
         <p class="eyebrow">Interface</p>
         <h2>四页工作流，克制而清楚</h2>
-        <p class="lede">启动页只做检查，任务页只做选择，详情页确认后才会运行。浅色与深色主题都跟随系统级质感。</p>
+        <p class="lede">启动页只做检查，任务页只管选择与导入，详情页调好变量再运行。浅色与深色主题都跟随系统级质感。</p>
       </div>
 
       <div class="gallery-bar reveal">
@@ -656,7 +666,7 @@ footer{border-top:1px solid var(--line);padding:56px 0 34px;background:color-mix
         <img id="shotImg" src="assets/screenshots/start-dark.webp" width="1360" height="880" alt="Auto Lumin 启动页截图">
       </figure>
       <figcaption class="caption reveal" id="shotCaption">
-        <b>启动</b><span id="shotDesc">Python、uv、工作区依赖、Git Bash、系统版本与管理员权限逐项检查；通过后手动进入任务。</span>
+        <b>启动</b><span id="shotDesc">Python、uv、工作区依赖、Git Bash、系统版本与管理员权限逐项必查；7-Zip 快捷导入可选，装不装都能进入任务。</span>
       </figcaption>
     </div>
   </section>
@@ -681,6 +691,7 @@ footer{border-top:1px solid var(--line);padding:56px 0 34px;background:color-mix
               <div><span>Git for Windows</span><b>含 Git Bash</b></div>
               <div><span>Windows</span><b>Build ≥ 20348</b></div>
               <div><span>权限</span><b>管理员</b></div>
+              <div><span>7-Zip（可选）</span><b>任务包导入</b></div>
             </div>
             <a class="btn btn-ghost" style="width:100%;margin-top:20px" href="https://github.com/sueenthear/Auto-Lumin/releases/latest" target="_blank" rel="noopener">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 20h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -721,7 +732,7 @@ cd Auto-Lumin</code></pre>
 
           <li class="step reveal">
             <h3>放入启动器并运行</h3>
-            <p>把 <code class="mono">AutoLumin.exe</code> 放到工作区根目录，双击启动。程序会请求管理员权限，六项检查全部通过后点击“进入任务”。</p>
+            <p>把 <code class="mono">AutoLumin.exe</code> 放到工作区根目录，双击启动。程序会请求管理员权限，六项必做检查全部通过后点击“进入任务”；用启动页的「一键安装 7-Zip」还能解锁任务包快捷导入。</p>
             <div class="code">
               <div class="code-head"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="lang">目录结构</span><button class="copy" type="button" data-copy="code-tree">复制</button></div>
               <pre><code id="code-tree">Auto-Lumin/
@@ -777,6 +788,7 @@ cd Auto-Lumin</code></pre>
             <div><dt><code>description</code></dt><dd>文字说明，可省略；用于搜索与详情页展示。</dd></div>
             <div><dt><code>run_target</code></dt><dd>相对于 <code>this.task</code> 的 Python 文件，默认 <code>run.py</code>。</dd></div>
             <div><dt><code>description_image</code></dt><dd>可选说明图，只支持 <code>.png</code>，留空表示无图。</dd></div>
+            <div><dt><code>var</code></dt><dd>可配置变量：<code>value</code> 给默认值，<code>type</code> 选 <code>int</code> / <code>float</code> / <code>string</code> / <code>bool</code>，<code>description</code> 显示在详情页。</dd></div>
             <div><dt><code>editor</code> / <code>version</code></dt><dd>作者与版本，显示在任务卡片右侧。</dd></div>
           </dl>
 
@@ -798,9 +810,14 @@ cd Auto-Lumin</code></pre>
   <span class="k">"title"</span>: <span class="s">"每日采集"</span>,
   <span class="k">"description"</span>: <span class="s">"按固定路线完成每日采集。"</span>,
   <span class="k">"editor"</span>: <span class="s">"your-name"</span>,
-  <span class="k">"version"</span>: <span class="s">"1.0"</span>,
+  <span class="k">"version"</span>: <span class="s">"1.1"</span>,
   <span class="k">"run_target"</span>: <span class="s">"run.py"</span>,
-  <span class="k">"description_image"</span>: <span class="s">"说明.png"</span>
+  <span class="k">"description_image"</span>: <span class="s">"说明.png"</span>,
+  <span class="k">"var"</span>: {
+    <span class="k">"value"</span>: { <span class="k">"times"</span>: <span class="n">50</span>, <span class="k">"speed"</span>: <span class="n">1.5</span>, <span class="k">"debug"</span>: <span class="k">false</span> },
+    <span class="k">"type"</span>: { <span class="k">"times"</span>: <span class="s">"int"</span>, <span class="k">"speed"</span>: <span class="s">"float"</span>, <span class="k">"debug"</span>: <span class="s">"bool"</span> },
+    <span class="k">"description"</span>: { <span class="k">"times"</span>: <span class="s">"采集轮次"</span>, <span class="k">"speed"</span>: <span class="s">"速度倍率"</span> }
+  }
 }</code></pre>
 <pre class="panel-run"><code id="code-run"><span class="k">from</span> script_core <span class="k">import</span> Core
 
@@ -808,9 +825,13 @@ do = Core(<span class="s">"Lumin.exe"</span>, timeout=<span class="n">10</span>)
 do.thisfile                          <span class="c"># 工作目录切到脚本所在目录</span>
 do.window.activate()                 <span class="c"># 恢复最小化并置于前台</span>
 
-<span class="k">if</span> do.match.exist(<span class="s">"claim.png"</span>, threshold=<span class="n">0.9</span>):
-    do.mouse.click.left              <span class="c"># 属性访问即执行</span>
-    do.wait(<span class="n">0.6</span>)
+times = do.var(<span class="s">"times"</span>, <span class="n">50</span>)              <span class="c"># 读取详情页里配置的值</span>
+speed = do.var(<span class="s">"speed"</span>, <span class="n">1.5</span>, <span class="s">"速度倍率"</span>, type=<span class="s">"float"</span>)
+
+<span class="k">for</span> _ <span class="k">in</span> <span class="k">range</span>(times):
+    <span class="k">if</span> do.match.exist(<span class="s">"claim.png"</span>, threshold=<span class="n">0.9</span>):
+        do.mouse.click.left          <span class="c"># 属性访问即执行</span>
+        do.wait(<span class="n">0.6</span> <span class="k">/</span> speed)
 
 actions = do.steps.load(<span class="s">"actions.stepscript"</span>)
 do.steps.start(actions)
@@ -894,6 +915,14 @@ do.audio.listen.start()              <span class="c"># 只监听目标进程</sp
           <div class="ans">可以加入 QQ 群 1108948355 获取现成脚本，也可以按上面的结构自己写。每个任务只是一个文件夹：<code>this.task</code> + <code>run.py</code>。</div>
         </details>
         <details class="qa">
+          <summary>拿到别人打包的任务，怎么装进来？<span class="plus" aria-hidden="true"></span></summary>
+          <div class="ans">在任务页把 <code>.zip</code>、<code>.7z</code> 或 <code>.rar</code> 拖进来，或点「选择任务包」。启动器会先校验包内的 <code>this.task</code> 与文件路径，通过后再导入到 <code>Task/未分类</code>，不会覆盖已有任务。RAR 需要完整版 7-Zip，可在启动页一键安装；以管理员身份运行时拖放可能被 Windows 拦截，改用按钮即可。</div>
+        </details>
+        <details class="qa">
+          <summary>任务里的次数、地图这些参数在哪里改？<span class="plus" aria-hidden="true"></span></summary>
+          <div class="ans">详情页的「任务配置」会按 <code>this.task</code> 里声明的 <code>var</code> 生成数字、开关与文本控件，改完点「保存」写回文件；直接点运行也会自动保存。脚本侧用 <code>do.var("times", 50)</code> 读到同一个值。</div>
+        </details>
+        <details class="qa">
           <summary>日志太多，能关掉调试输出吗？<span class="plus" aria-hidden="true"></span></summary>
           <div class="ans">详情页勾选“运行时不输出用于开发调试的 log”即可隐藏 log 面板，只保留普通输出与错误信息；重新运行会沿用本次选择。</div>
         </details>
@@ -920,7 +949,7 @@ do.audio.listen.start()              <span class="c"># 只监听目标进程</sp
       <h4>项目</h4>
       <a href="https://github.com/sueenthear/Auto-Lumin" target="_blank" rel="noopener">GitHub 仓库</a>
       <a href="https://github.com/sueenthear/Auto-Lumin/releases/latest" target="_blank" rel="noopener">最新 Release</a>
-      <a href="https://github.com/sueenthear/Auto-Lumin/releases/tag/Launcher_v1.0" target="_blank" rel="noopener">Launcher v1.0</a>
+      <a href="https://github.com/sueenthear/Auto-Lumin/releases/tag/Launcher_v1.1" target="_blank" rel="noopener">Launcher v1.1</a>
     </div>
     <div class="footer-col">
       <h4>文档</h4>
@@ -1009,22 +1038,22 @@ do.audio.listen.start()              <span class="c"># 只监听目标进程</sp
       dark: "assets/screenshots/start-dark.webp",
       light: "assets/screenshots/start-light.webp",
       label: "启动",
-      desc: "Python、uv、工作区依赖、Git Bash、系统版本与管理员权限逐项检查；通过后手动进入任务。",
-      alt: "Auto Lumin 启动页：六项环境检查全部通过"
+      desc: "Python、uv、工作区依赖、Git Bash、系统版本与管理员权限逐项必查；7-Zip 快捷导入可选，装不装都能进入任务。",
+      alt: "Auto Lumin 启动页：六项必做检查全部通过，7-Zip 快捷导入就绪"
     },
     tasks: {
       dark: "assets/screenshots/tasks-dark.webp",
       light: "assets/screenshots/tasks-light.webp",
       label: "任务",
-      desc: "递归扫描 Task 下任意层级的 this.task，支持搜索、分类与按修改时间排序，勾选后即时生效。",
-      alt: "Auto Lumin 任务页：任务列表、搜索与排序"
+      desc: "递归扫描 Task 下任意层级的 this.task，支持搜索、分类与按修改时间排序；顶部拖入 .zip / .7z / .rar 任务包即可导入。",
+      alt: "Auto Lumin 任务页：任务列表、搜索排序与任务包快捷导入"
     },
     detail: {
       dark: "assets/screenshots/detail-dark.webp",
       light: "assets/screenshots/detail-light.webp",
       label: "详情",
-      desc: "确认任务说明、版本与说明图，选择运行选项后再启动；任务无法运行时会在页面内说明原因。",
-      alt: "Auto Lumin 任务详情页：任务说明与运行选项"
+      desc: "任务说明、任务配置与版本拆成折叠卡片；this.task 里声明的 var 会生成数字、开关与文本控件，保存即写回文件，图片可点击放大。",
+      alt: "Auto Lumin 任务详情页：折叠卡片与任务变量配置控件"
     },
     run: {
       dark: "assets/screenshots/run-dark.webp",
@@ -1035,6 +1064,7 @@ do.audio.listen.start()              <span class="c"># 只监听目标进程</sp
     }
   };
   var currentView = "start";
+  var shotToken = 0;
   var shotImg = document.getElementById("shotImg");
   var shotNow = document.getElementById("shotNow");
   var shotDesc = document.getElementById("shotDesc");
@@ -1046,21 +1076,26 @@ do.audio.listen.start()              <span class="c"># 只监听目标进程</sp
   function renderShot() {
     var shot = shots[currentView];
     var src = shot[shotTheme];
+    // 文案先同步更新，图片异步换；用序号丢弃过期的加载结果，避免标题与画面错配。
+    shotNow.textContent = shot.label + " · " + themeLabel(shotTheme);
+    shotLabel.textContent = shot.label;
+    shotDesc.textContent = shot.desc;
     if (shotImg.getAttribute("src") === src) return;
+    var token = ++shotToken;
     shotImg.classList.add("swapping");
     var next = new Image();
     next.onload = function () {
+      if (token !== shotToken) return;
       shotImg.src = src;
       shotImg.alt = shot.alt;
       requestAnimationFrame(function () { shotImg.classList.remove("swapping"); });
       window.setTimeout(function () { shotImg.classList.remove("swapping"); }, 900);
     };
-    next.onerror = function () { shotImg.classList.remove("swapping"); };
+    next.onerror = function () {
+      if (token === shotToken) shotImg.classList.remove("swapping");
+    };
     next.src = src;
     if (next.complete) next.onload();
-    shotNow.textContent = shot.label + " · " + themeLabel(shotTheme);
-    shotLabel.textContent = shot.label;
-    shotDesc.textContent = shot.desc;
   }
 
   function selectView(view) {
