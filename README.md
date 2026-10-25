@@ -9,6 +9,7 @@
 | 路径 | 说明 |
 | --- | --- |
 | `script_core/` | 可复用的 Python API：窗口、键盘、鼠标、截图、像素、模板匹配、音频匹配、动作序列。 |
+| `Launcher.py` | Qt/Fluent 启动器：环境检查、任务详情、任务变量配置、任务包快捷导入。 |
 | `dev_tool/ok_lumin_tool/` | 桌面工具：窗口定位、截图、动作录制与回放。 |
 | `example/` | 示例脚本：`window_info.py` 查看窗口信息，`auto-dodge.py` 声音触发自动闪避。 |
 | `tests/` | 单元测试。 |
@@ -38,6 +39,17 @@ print(do.window.alive, do.window.position, do.window.size)
 do.window.size(100, 100, 1280, 720)   # 外框移到 (100,100)，客户区设为 1280×720
 do.window.size(1600, 900)             # 只改客户区尺寸，保持位置
 ```
+
+## 任务变量
+
+任务可以在 `this.task` 的 `var` 中声明 `int`、`float`、`string`、`bool` 变量；启动器详情页会生成配置界面，运行前写回文件，并通过 `--this-task <路径>` 传给脚本：
+
+```python
+times = do.var("times", 50)           # 默认值，this.task 中存在同名变量时优先读取文件值
+speed = do.var("speed", 1.5, "速度倍率", type="float")
+```
+
+启动器未安装 7-Zip 时不提供任务包快捷导入；启动页可按需一键安装完整版。快捷导入支持 `.zip`、`.7z` 和 `.rar`（RAR 需要完整版 `7z.exe` 及其 `7z.dll`）。以管理员身份运行时若拖放被 Windows 拦截，可改用任务页的「选择任务包」按钮。完整说明见 [script_core/use.md](script_core/use.md)。
 
 ## 键盘
 

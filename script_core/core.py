@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from __future__ import annotations
-
 from dataclasses import dataclass
+from pathlib import Path
 import time
 from typing import TYPE_CHECKING
 
@@ -53,11 +52,23 @@ class ScriptCore:
         )
 
 
-def Core(executable_name: str, timeout: float = 10) -> AutomationCore:
-    """Bind the target window or raise when it cannot be found in time."""
+def Core(
+    executable_name: str,
+    timeout: float = 10,
+    *,
+    this_task: str | Path | None = None,
+) -> AutomationCore:
+    """Bind the target window or raise when it cannot be found in time.
+
+    ``this_task`` is normally supplied by the launcher as ``--this-task <path>``;
+    passing it explicitly is useful for tests and manual runs.
+    """
     from .facade import AutomationCore
 
     try:
-        return AutomationCore(ScriptCore.bind(executable_name=executable_name, timeout=timeout))
+        return AutomationCore(
+            ScriptCore.bind(executable_name=executable_name, timeout=timeout),
+            this_task=this_task,
+        )
     except LookupError as exc:
         raise SystemExit(f"Could not bind window for {executable_name!r}: {exc}") from exc

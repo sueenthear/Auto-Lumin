@@ -21,5 +21,13 @@ ds/
 test.png
 *.stepscript
 
+# Local launcher build/runtime files
+AutoLumin.exe
+AutoLumin.lnk
+launcher_set.ini
+7z.exe
+7z.dll
+7zr.exe
+
 # Local agent/push notes (never publish)
 推送说明.md

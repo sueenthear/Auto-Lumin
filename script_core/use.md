@@ -40,6 +40,47 @@ if execute_rote.error is not None:
     raise execute_rote.error
 ```
 
+## 任务变量
+
+任务可以通过 `this.task` 的 `var` 节暴露可配置变量，启动器会据此生成配置界面，并在运行时把 `this.task` 路径作为 `--this-task <path>` 参数传给脚本：
+
+```python
+do = Core("Lumin.exe")
+
+times = do.var("times", 50)                       # 自动识别为 int
+speed = do.var("speed", 1.5)                      # float
+name  = do.var("name", "默认名称")                # string
+debug = do.var("debug", False)                    # bool
+ratio = do.var("ratio", 1, type="float")          # 显式指定类型，返回 1.0
+```
+
+`var(name, value, description="这是一个可定义的变量", type=None)`：
+
+- `value` 只是默认值。`this.task` 中已有同名变量时优先返回文件里的值；缺失时把默认值、类型和描述写入 `this.task`。
+- `type` 留空时按 `value` 自动识别；也接受 `int`、`float`、`str`/`"string"`、`bool` 或对应字符串。`value` 与类型不兼容时抛出 `TypeError`。
+- 支持的变量类型只有 `int`、`float`、`string`、`bool`。`bool` 不会被当成 `int`；`int` 可以用于 `float` 类型并返回浮点数。
+- 没有 `--this-task` 启动参数时只返回默认值，不会创建或修改任何文件。
+- `this.task` 中记录的类型与脚本定义不一致、值无法转换为定义类型、或文件格式损坏时，同样抛出异常，避免带着错误配置继续运行。
+
+对应的 `this.task` 结构如下；三个分组都以变量名为键：
+
+```json
+{
+  "title": "示例",
+  "var": {
+    "value":       {"times": 50, "speed": 1.5, "name": "默认名称", "debug": false},
+    "type":        {"times": "int", "speed": "float", "name": "string", "debug": "bool"},
+    "description": {"times": "执行次数", "speed": "速度倍率", "name": "角色名", "debug": "调试模式"}
+  }
+}
+```
+
+`this.task` 不一定与 `run.py` 同级，路径由启动器传入；直接运行脚本时可以显式传入：
+
+```python
+Core("Lumin.exe", this_task="path/to/this.task")
+```
+
 ## 日志
 
 ```python

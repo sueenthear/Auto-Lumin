@@ -13,6 +13,7 @@ from .image_manager.matcher import TemplateMatcher
 from .interrupt import Interrupt
 from .pixel import Pixel
 from .steps import load_steps
+from .variables import DEFAULT_DESCRIPTION, TaskVariables
 
 
 def _log(logger, source: str, message: str) -> None:
@@ -668,9 +669,10 @@ class _LogAPI:
 class AutomationCore:
     mouse: _Mouse
 
-    def __init__(self, core):
+    def __init__(self, core, *, this_task=None):
         self._core = core
         self._logger = DoLogger()
+        self._variables = TaskVariables(this_task)
         self.log = _LogAPI(self._logger)
         self.window = _Window(core, self._logger)
         self.image = _Image(core, self._logger)
@@ -695,3 +697,19 @@ class AutomationCore:
             raise ValueError("wait seconds must be a finite nonnegative number")
         _log(getattr(self, "_logger", None), "do.wait", f"{seconds}s")
         time.sleep(seconds)
+
+    def var(
+        self,
+        name: str,
+        value,
+        description: str = DEFAULT_DESCRIPTION,
+        type=None,
+    ):
+        """Read a task variable, writing ``value`` as its default when missing.
+
+        The launcher passes the task's ``this.task`` path as ``--this-task``.
+        Without that argument the default value is returned without touching
+        any file.
+        """
+        _log(getattr(self, "_logger", None), "do.var", f"{name}={value!r}")
+        return self._variables.get(name, value, description=description, type=type)
