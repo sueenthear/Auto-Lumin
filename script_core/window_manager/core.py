@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import ctypes
 import time
+from contextlib import contextmanager
 from ctypes import wintypes
-from typing import Any
+from typing import Any, Iterator
 
 import win32con
 import win32gui
@@ -111,6 +112,37 @@ class WindowManager:
         left, top, right, bottom = win32gui.GetClientRect(self.hwnd)
         return right - left, bottom - top
 
+    @contextmanager
+    def _physical_dpi_context(self) -> Iterator[None]:
+        """Make Win32 coordinate queries on this thread return physical pixels.
+
+        This is a fallback for processes that already created a window before
+        importing :mod:`script_core` (so process-wide DPI awareness could no
+        longer be enabled).  WGC frames are always physical; without the
+        override an unaware process gets virtualized client coordinates and
+        crops the wrong region.
+        """
+        try:
+            user32 = ctypes.WinDLL("user32", use_last_error=True)
+            set_context = user32.SetThreadDpiAwarenessContext
+            set_context.argtypes = [ctypes.c_void_p]
+            set_context.restype = ctypes.c_void_p
+        except (AttributeError, OSError):
+            yield
+            return
+        previous = set_context(ctypes.c_void_p(-4))  # PER_MONITOR_AWARE_V2
+        try:
+            yield
+        finally:
+            if previous:
+                set_context(previous)
+
+    @property
+    def client_size_physical(self) -> tuple[int, int]:
+        """Return the client size in physical pixels on any DPI setting."""
+        with self._physical_dpi_context():
+            return self.client_size
+
     def client_to_screen(self, x: int, y: int) -> tuple[int, int]:
         self._ensure_window()
         return win32gui.ClientToScreen(self.hwnd, (x, y))
@@ -119,8 +151,14 @@ class WindowManager:
         self._ensure_window()
         return win32gui.ScreenToClient(self.hwnd, (x, y))
 
-    def client_rect_in_window_capture(self) -> tuple[int, int, int, int]:
-        """Return the client-area crop rectangle in a WGC window frame."""
+    def extended_frame_bounds(self) -> tuple[int, int, int, int]:
+        """Return DWM's visible window bounds in the current thread's DPI space.
+
+        A WGC window frame starts at the same top-left corner as these bounds,
+        so they convert between screen coordinates and frame pixels.  Call it
+        inside :meth:`_physical_dpi_context` before mixing the result with
+        captured pixels, because WGC frames are always physical.
+        """
         self._ensure_window()
         visible = wintypes.RECT()
         result = ctypes.windll.dwmapi.DwmGetWindowAttribute(
@@ -131,11 +169,16 @@ class WindowManager:
         )
         if result != 0:
             raise OSError(result, "DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS) failed")
+        return visible.left, visible.top, visible.right, visible.bottom
 
-        client_left, client_top = self.client_to_screen(0, 0)
-        x = client_left - visible.left
-        y = client_top - visible.top
-        width, height = self.client_size
+    def client_rect_in_window_capture(self) -> tuple[int, int, int, int]:
+        """Return the client-area crop rectangle in physical WGC frame pixels."""
+        with self._physical_dpi_context():
+            visible_left, visible_top, _, _ = self.extended_frame_bounds()
+            client_left, client_top = self.client_to_screen(0, 0)
+            width, height = self.client_size
+        x = client_left - visible_left
+        y = client_top - visible_top
         return x, y, x + width, y + height
 
     def set_position(self, x: int, y: int) -> None:

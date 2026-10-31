@@ -3,8 +3,10 @@ from __future__ import annotations
 import threading
 import time
 
+import cv2
 import numpy as np
 
+from .._dpi import ensure_process_dpi_awareness
 from ..window_manager import WindowManager
 
 
@@ -144,6 +146,66 @@ class WindowCapture:
                 capture.closed_handler = None
                 capture.capture = None
 
+    @staticmethod
+    def _crop_fits(
+        crop: tuple[int, int, int, int],
+        frame_width: int,
+        frame_height: int,
+    ) -> bool:
+        left, top, right, bottom = crop
+        return 0 <= left < right <= frame_width and 0 <= top < bottom <= frame_height
+
+    def _crop_client_area(
+        self,
+        frame_buffer: np.ndarray,
+        expected_size: tuple[int, int],
+    ) -> np.ndarray:
+        expected_width, expected_height = expected_size
+        frame_height, frame_width = frame_buffer.shape[:2]
+        crop = self.window.client_rect_in_window_capture()
+        if not self._crop_fits(crop, frame_width, frame_height):
+            raise RuntimeError(
+                f"Client crop {crop} exceeds WGC frame {(frame_width, frame_height)} "
+                f"(process DPI awareness: {ensure_process_dpi_awareness()}); "
+                "window client coordinates and captured pixels disagree"
+            )
+
+        left, top, right, bottom = crop
+        patch = frame_buffer[top:bottom, left:right]
+        actual_height, actual_width = patch.shape[:2]
+        # Win32 rect queries use physical pixels (thread override), while
+        # expected_size comes from the public, possibly DPI-virtualized API.
+        physical_width, physical_height = getattr(
+            self.window, "client_size_physical", expected_size)
+        near_physical = (
+            abs(actual_width - physical_width) <= 2
+            and abs(actual_height - physical_height) <= 2
+        )
+        near_expected = (
+            abs(actual_width - expected_width) <= 2
+            and abs(actual_height - expected_height) <= 2
+        )
+        if not (near_physical or near_expected):
+            raise RuntimeError(
+                f"Client capture size {actual_width}x{actual_height} does not match "
+                f"physical client size {physical_width}x{physical_height} "
+                f"(expected {expected_width}x{expected_height})"
+            )
+        if (actual_width, actual_height) == (expected_width, expected_height):
+            # Copy only the client area: never retain the whole-frame buffer
+            # or the native mapped-frame allocation.
+            return patch.copy()
+
+        # Reduce a DPI-unaware physical crop to the logical public size.  A
+        # one-pixel border rounding difference also lands here harmlessly.
+        interpolation = (
+            cv2.INTER_AREA
+            if actual_width >= expected_width and actual_height >= expected_height
+            else cv2.INTER_LINEAR
+        )
+        return cv2.resize(
+            patch, (expected_width, expected_height), interpolation=interpolation)
+
     def _start(self, expected_size: tuple[int, int]):
         try:
             from windows_capture import WindowsCapture
@@ -161,23 +223,10 @@ class WindowCapture:
             try:
                 if self._capture is not capture:
                     return  # a retired session must not publish stale frames
-                image = frame.frame_buffer
-                left, top, right, bottom = self.window.client_rect_in_window_capture()
-                frame_height, frame_width = image.shape[:2]
-                if left < 0 or top < 0 or right > frame_width or bottom > frame_height:
-                    raise RuntimeError(
-                        f"Client crop {(left, top, right, bottom)} exceeds WGC frame "
-                        f"{(frame_width, frame_height)}"
-                    )
-                image = image[top:bottom, left:right]
-                if image.shape[:2] != (expected_height, expected_width):
-                    raise RuntimeError(
-                        f"Client capture size {image.shape[1]}x{image.shape[0]} "
-                        f"does not match expected {expected_width}x{expected_height}"
-                    )
-                # Copy only the client area: never retain the whole-frame buffer
-                # or the native mapped-frame allocation.
-                cropped = image.copy()
+                # Copy only the client area: never retain the whole-frame
+                # buffer or the native mapped-frame allocation.
+                cropped = self._crop_client_area(
+                    frame.frame_buffer, (expected_width, expected_height))
             except BaseException as exc:
                 with self._condition:
                     if self._capture is capture:
