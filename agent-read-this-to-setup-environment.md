@@ -5,23 +5,33 @@
 ## 环境要求
 
 - Windows 10/11 桌面环境。窗口绑定、输入模拟和截图功能依赖 Windows API；`pywin32` 也仅在 Windows 上安装。
-- Python 3.10 或更新版本，以及 `uv`。
+- Python **3.12 或更新版本**，以及 `uv`。建议使用 Python 3.12；不要为本项目选择 Python 3.10 或 3.11。
+- 包内音频模板使用 `WAVE_FORMAT_EXTENSIBLE` PCM WAV 文件头，Python 标准库 `wave` 从 3.12 起才支持读取。旧版本会在启动音频监听时抛出 `wave.Error: unknown format: 65534`，随后显示 `ValueError: 无效的 .voice WAV 模板`。
 - Git 仅在克隆或推送项目时需要。
 - 项目依赖由 `pyproject.toml` 管理；不要将本机 `.venv` 或已安装的依赖目录提交到版本库。
 
-确认 Python 版本：
+确认 `uv` 可用，并安装 Python 3.12：
 
 ```powershell
 uv --version
+uv python install 3.12
 ```
 
 ## 创建并安装项目环境
 
-在项目根目录创建 `.venv` 并按锁文件同步全部项目依赖：
+在项目根目录明确使用 Python 3.12 创建 `.venv`，并按锁文件同步全部项目依赖。已有旧版本 `.venv` 时也执行此命令，让 `uv` 使用指定版本重新创建环境：
 
 ```powershell
-uv sync --locked
+uv sync --locked --python 3.12
 ```
+
+确认项目实际使用的解释器版本，而不是仅检查全局 `python` 或 `uv` 的版本：
+
+```powershell
+uv run --locked python -c "import sys; print(sys.executable); print(sys.version); assert sys.version_info >= (3, 12), 'Python 3.12+ is required'"
+```
+
+版本检查通过后再启动工具或任务。若出现上述 `65534` 错误，先检查运行任务的解释器是否确实为项目 `.venv` 中的 Python 3.12 或更新版本。
 
 运行项目命令时使用 `uv run`，确保始终使用该 `.venv`：
 

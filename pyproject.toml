@@ -13,7 +13,7 @@ script_core = ["py.typed", "use.md"]
 name = "ok-lumin-new"
 version = "0.1.0"
 description = "Windows game automation with foreground input, WGC capture, and image matching"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "mouse>=0.7.1",
     "opencv-python>=5.0.0.93",
